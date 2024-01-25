@@ -25,6 +25,8 @@ def recv():
     global gdb
     gdb.expect(r'\(gdb\)')
     text = gdb.before.decode('utf-8')
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    text = ansi_escape.sub('', text)
     print("text:", text)
     return text
 
