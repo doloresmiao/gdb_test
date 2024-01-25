@@ -1,47 +1,40 @@
 import os
 import sys
 import time
-import gdb_ctrl
-from gdb_ctrl import SyncGDBCtrl
-from gdb_ctrl import GDBCtrl 
-import gdb_mi
 import json
 import re
+import pexpect
 
 gdb = None
-
+count = 0
 def send(*txt):
     global gdb
+    global count
+    print("send ", count)
+    count += 1
     while True:
         #try:
-        gdb.send(' '.join(txt))
+        gdb.sendline(' '.join(txt))
         time.sleep(0.001)
         break
         #except BlockingIOError as e:
         #    print("IO blocked. Retry...")
-        #    input("enter:")
     return
 
 def recv():
     global gdb
-    recvText = ""
-    allJsons = []
-    while True:
-        recvText = str(gdb.recv())
-        recvText = recvText.replace("\"", "\\\"").replace("'", "\"").replace("None,", "\"\",")
-        recvText = re.sub(r'\"[\n\r\s]+\"', '', recvText)
-        #print("recv raw：", recvText)
-        if "(gdb)" in recvText:
-            #print("recv done:", recvText)
-            break
-        j = json.loads(recvText)
-        #print("recv:", j)
-        allJsons.append(j)
-    return allJsons
+    gdb.expect(r'\(gdb\)')
+    text = gdb.before.decode('utf-8')
+    print("text:", text)
+    return text
 
 if __name__ == "__main__":
-    gdb = SyncGDBCtrl(force_styling=None)
-    gdb.spawn(geometry=(200,80))
+    gdb = pexpect.spawn('gdb')
+    gdb.delaybeforesend = None
+    gdb.delayafterread = None
+    gdb.delayafterclose = None
+    gdb.delayafterterminate = None    
+    recv()
     send("set", "new-console", "on")
     recv()
     send("file", sys.argv[1])
@@ -49,28 +42,13 @@ if __name__ == "__main__":
     send("b", "main")
     recv()
     send("r ", sys.argv[2])
-    recv()
-    while True:
-        try:
-            send("si")
-            allJsons = recv()
-            endOfProgram = False
-            shouldPause = False
-            for j in allJsons:
-                if j["type"] == "Notify" and j["class"] == "thread-group-exited":
-                    endOfProgram = True
-                    break
-                if j["type"] == "Exec" and j["class"] == "stopped" and j["reason"] == "end-stepping-range":
-                    frame = j["frame"]
-                    if "fullname" in frame:
-                        print(frame["fullname"], frame["func"], frame["line"])
-                    elif "func" in frame:
-                        print("(none)", frame["func"], "(none)")
-                    else:
-                        print("(none) (none) (none)")
-                    shouldPause = True
-            if endOfProgram:
-                break
-        except gdb_mi.ParsingError as e:
-            print("raw msg:", str(e).split("Original message:\n")[1])
-    gdb.shutdown()
+    recv()        
+    while True:    
+        send("s")
+        allText = recv()
+        endOfProgram = False
+        shouldPause = False
+        if "exited normally" in allText:
+            endOfProgram = True
+        if endOfProgram:
+            break
