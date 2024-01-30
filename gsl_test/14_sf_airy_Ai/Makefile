@@ -63,7 +63,7 @@ mk_workspace:
 	mkdir -p workspace/original_files
 
 run:
-	python3 ../driver/auto_gdb.py ./test 0xc30c5912e502289f
+	python3 ../../driver/auto_gdb.py ./test 0xc30c5912e502289f
 
 main: mk_workspace
 	$(CC) $(CFLAGS) -c minmax.c -o minmax.o $(CUDAFLAGS) $(OPT) 

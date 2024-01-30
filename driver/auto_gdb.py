@@ -39,6 +39,8 @@ if __name__ == "__main__":
     recv()
     send("set", "new-console", "on")
     recv()
+    send("set", "disassemble-next-line", "on")
+    recv()
     send("file", sys.argv[1])
     recv()
     send("b", "main")
@@ -54,3 +56,16 @@ if __name__ == "__main__":
             endOfProgram = True
         if endOfProgram:
             break
+
+        send("x/i $pc")
+        allText = recv()
+
+        send("bt -frame-info location-and-address")
+        allText = recv()
+
+        send("info args")
+        allText = recv()
+
+        send("info locals")
+        allText = recv()
+        input("continue...")
