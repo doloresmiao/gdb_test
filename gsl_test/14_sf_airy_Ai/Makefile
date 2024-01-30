@@ -36,6 +36,16 @@ OPT += -ffast-math
 endif
 endif
 
+ifndef $(NEW_CLANG)
+NEW_CLANG = 0
+endif
+
+ifeq ($(NEW_CLANG), 1)
+OPTFLAGS = -enable-new-pm=0
+else
+OPTFLAGS = 
+endif
+
 ifndef $(LIBS)
 ifeq ($(CC), nvcc)
 LIBS += -lcudart_static -ldl -lrt -lpthread
@@ -65,35 +75,31 @@ mk_workspace:
 run:
 	python3 ../../driver/auto_gdb.py ./test 0xc30c5912e502289f
 
-main: mk_workspace
-	$(CC) $(CFLAGS) -c minmax.c -o minmax.o $(CUDAFLAGS) $(OPT) 
-	$(CC) $(CFLAGS) -c trig.c -o trig.o $(CUDAFLAGS) $(OPT) 
-	$(CC) $(CFLAGS) -c airy.c -o airy.o $(CUDAFLAGS) $(OPT)
-	$(CC) $(CFLAGS) -c error.c -o error.o $(CUDAFLAGS) $(OPT)
-	$(CC) $(CFLAGS) -c log.c -o log.o $(CUDAFLAGS) $(OPT)
-	$(CC) $(CFLAGS) test.c minmax.o trig.o airy.o error.o log.o -o test $(CUDAFLAGS) $(OPT) $(LDFLAGS)
-
 clean:
-	rm -rf *.o test *.out
+	rm -rf *.o *.bc test *.out
 	rm -rf workspace 0*/ output.map
 
-func_analysis: mk_workspace
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-function-analysis -c minmax.c -emit-llvm
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-function-analysis -c trig.c -emit-llvm
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-function-analysis -c airy.c -emit-llvm
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-function-analysis -c error.c -emit-llvm
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-function-analysis -c log.c -emit-llvm
+main_bc:
+	clang++ -emit-llvm minmax.c -c -o minmax.bc $(CUDAFLAGS) $(OPT) $(CFLAGS)
+	clang++ -emit-llvm log.c -c -o log.bc $(CUDAFLAGS) $(OPT) $(CFLAGS)
+	clang++ -emit-llvm error.c -c -o error.bc $(CUDAFLAGS) $(OPT) $(CFLAGS)
+	clang++ -emit-llvm trig.c -c -o trig.bc $(CUDAFLAGS) $(OPT) $(CFLAGS)
+	clang++ -emit-llvm airy.c -c -o airy.bc $(CUDAFLAGS) $(OPT) $(CFLAGS)
+	clang++ -emit-llvm test.c -c -o test.bc $(CUDAFLAGS) $(OPT) $(CFLAGS)
 
-raise_precision:
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-expand-precision -c minmax.c -emit-llvm
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-expand-precision -c trig.c -emit-llvm
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-expand-precision -c airy.c -emit-llvm
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-expand-precision -c error.c -emit-llvm
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-expand-precision -c log.c -emit-llvm
+tracediff:
+	opt $(OPTFLAGS) -load ../../baseline_civ/libTraceDiffPass.so -tracediff < minmax.bc > /dev/null
+	opt $(OPTFLAGS) -load ../../baseline_civ/libTraceDiffPass.so -tracediff < log.bc > /dev/null
+	opt $(OPTFLAGS) -load ../../baseline_civ/libTraceDiffPass.so -tracediff < error.bc > /dev/null
+	opt $(OPTFLAGS) -load ../../baseline_civ/libTraceDiffPass.so -tracediff < trig.bc > /dev/null
+	opt $(OPTFLAGS) -load ../../baseline_civ/libTraceDiffPass.so -tracediff < airy.bc > /dev/null
+	opt $(OPTFLAGS) -load ../../baseline_civ/libTraceDiffPass.so -tracediff < test.bc > /dev/null
 
-print_results:
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-print-results -c minmax.c -emit-llvm
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-print-results -c trig.c -emit-llvm
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-print-results -c airy.c -emit-llvm
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-print-results -c error.c -emit-llvm
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-print-results -c log.c -emit-llvm
+main: mk_workspace main_bc tracediff
+	llc -filetype=obj test.bc
+	llc -filetype=obj minmax.bc
+	llc -filetype=obj log.bc
+	llc -filetype=obj error.bc
+	llc -filetype=obj trig.bc
+	llc -filetype=obj airy.bc
+	$(CC) test.o minmax.o log.o error.o trig.o airy.o -o test $(OPT) $(LDFLAGS)

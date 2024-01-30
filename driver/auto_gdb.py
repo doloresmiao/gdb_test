@@ -48,7 +48,7 @@ if __name__ == "__main__":
     send("r ", sys.argv[2])
     recv()        
     while True:    
-        send("s")
+        send("si")
         allText = recv()
         endOfProgram = False
         shouldPause = False
