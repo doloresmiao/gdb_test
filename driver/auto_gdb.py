@@ -7,19 +7,6 @@ import pexpect
 
 gdb = None
 count = 0
-def send(*txt):
-    global gdb
-    global count
-    print("send ", count)
-    count += 1
-    while True:
-        #try:
-        gdb.sendline(' '.join(txt))
-        time.sleep(0.001)
-        break
-        #except BlockingIOError as e:
-        #    print("IO blocked. Retry...")
-    return
 
 def recv():
     global gdb
@@ -30,26 +17,39 @@ def recv():
     print("text:", text)
     return text
 
+def send(*txt):
+    global gdb
+    global count
+    count += 1
+    while True:
+        #try:
+        gdb.sendline(' '.join(txt))
+        time.sleep(0.001)
+        break
+        #except BlockingIOError as e:
+        #    print("IO blocked. Retry...")
+    allText = recv()
+    return allText
+
 if __name__ == "__main__":
     gdb = pexpect.spawn('gdb')
     gdb.delaybeforesend = None
     gdb.delayafterread = None
     gdb.delayafterclose = None
     gdb.delayafterterminate = None    
-    recv()
+    
     send("set", "new-console", "on")
-    recv()
+    
     send("set", "disassemble-next-line", "on")
-    recv()
+    
     send("file", sys.argv[1])
-    recv()
+    
     send("b", "main")
-    recv()
+    
     send("r ", sys.argv[2])
-    recv()        
+            
     while True:    
-        send("si")
-        allText = recv()
+        allText = send("si")
         endOfProgram = False
         shouldPause = False
         if "exited normally" in allText:
@@ -57,15 +57,10 @@ if __name__ == "__main__":
         if endOfProgram:
             break
 
-        send("x/i $pc")
-        allText = recv()
+        allText = send("x/i $pc")
 
-        send("bt -frame-info location-and-address")
-        allText = recv()
+        allText = send("bt -frame-info location-and-address")
 
-        send("info args")
-        allText = recv()
+        allText = send("info args")
 
-        send("info locals")
-        allText = recv()
-        input("continue...")
+        allText = send("info locals")
