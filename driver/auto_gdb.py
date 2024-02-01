@@ -38,7 +38,7 @@ if __name__ == "__main__":
     gdb.delayafterclose = None
     gdb.delayafterterminate = None    
     
-    send("set", "new-console", "on")
+    send("set", "pagination", "off")
     
     send("set", "disassemble-next-line", "on")
     
@@ -58,9 +58,7 @@ if __name__ == "__main__":
             break
 
         allText = send("x/i $pc")
-
         allText = send("bt -frame-info location-and-address")
-
-        allText = send("info args")
-
         allText = send("info locals")
+
+        input("continue...")
