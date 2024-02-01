@@ -55,17 +55,18 @@ mk_workspace:
 
 
 run:
-	cat input.txt | ./test `xargs`
+	python3 ../../driver/auto_gdb.py -p ./test -a 0x433d75089307b26e
 
-main: mk_workspace
-	$(CC) test.cpp -o test $(CUDAFLAGS) $(OPT) $(LDFLAGS) 
+main: mk_workspace main_bc tracediff
+	llc -filetype=obj test.bc
+	$(CC) test.o -o test $(OPT) $(LDFLAGS)
 
 clean:
-	rm -rf *.o test *.out
+	rm -rf *.o *.bc test *.out
 	rm -rf workspace 0*/ output.map
 
 main_bc:
-	clang++ -O3 -emit-llvm test.cpp -c -o test.bc $(CUDAFLAGS) $(OPT) $(LDFLAGS)
+	clang++ -O3 -emit-llvm test.cpp -g -c -o test.bc $(CUDAFLAGS) $(OPT) $(LDFLAGS)
 
 tracediff:
-	opt -enable-new-pm=0 -load /lib/libTraceDiffPass.so -tracediff < test.bc > /dev/null
+	opt -load ../../baseline_civ/libTraceDiffPass.so -tracediff < test.bc > /dev/null

@@ -64,6 +64,7 @@ if __name__ == "__main__":
     gdb.delayafterterminate = None    
     recv(True)
     send("set", "pagination", "off")
+    send("set", "print", "asm-demangle", "on")
     #send("set", "disassemble-next-line", "on")
     
     send("file", ProgramName)
