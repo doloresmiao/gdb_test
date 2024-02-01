@@ -73,7 +73,7 @@ mk_workspace:
 	mkdir -p workspace/original_files
 
 run:
-	python3 ../../driver/auto_gdb.py ./test 0xc30c5912e502289f
+	python3 ../../driver/auto_gdb.py -p ./test -a 0xc30c5912e502289f
 
 clean:
 	rm -rf *.o *.bc test *.out
