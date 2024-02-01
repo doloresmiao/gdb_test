@@ -73,8 +73,10 @@ if __name__ == "__main__":
     send("r ", *Arguments)
     os.system('cls' if os.name == 'nt' else 'clear')
     prev_inst = ""
+    next_command = "si"
     while True:    
-        allText = send("si")
+        allText = send(next_command)
+        next_command = "si"
         endOfProgram = False
         shouldPause = False
         if "exited normally" in allText:
@@ -86,6 +88,13 @@ if __name__ == "__main__":
         allText = send("bt -frame-info location-and-address")
         allText = send("info locals")
         prt("curr_inst:", curr_inst, level=2)
-        prev_inst = curr_inst
 
-        input("continue...")
+        if "call" in curr_inst:
+            if "<printf>" in curr_inst:
+                next_command = "ni"
+            p = input("command:")
+            while p.strip() != "":
+                send(p)
+                p = input("command:")
+
+        prev_inst = curr_inst
