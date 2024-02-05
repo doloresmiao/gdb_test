@@ -66,7 +66,7 @@ clean:
 	rm -rf workspace 0*/ output.map
 
 main_bc:
-	clang++ -O3 -emit-llvm test.cpp -g -c -o test.bc $(CUDAFLAGS) $(OPT) $(LDFLAGS)
+	clang -O3 -emit-llvm test.cpp -g -c -o test.bc $(CUDAFLAGS) $(OPT) $(LDFLAGS)
 
 tracediff:
 	opt -load ../../baseline_civ/libTraceDiffPass.so -tracediff < test.bc > /dev/null

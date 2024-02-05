@@ -35,7 +35,7 @@ def send(*txt, **kwargs):
     global gdb
     global count
     count += 1
-    display = True
+    display = False
     if "display" in kwargs:
         display = kwargs["display"]
 
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     recv(True)
     send("set", "pagination", "off")
     send("set", "print", "asm-demangle", "on")
-    #send("set", "disassemble-next-line", "on")
+    send("set", "disassemble-next-line", "on")
     
     send("file", ProgramName)
     
@@ -76,7 +76,8 @@ if __name__ == "__main__":
     prev_inst = ""
     next_command = "si"
     while True:    
-        allText = send(next_command)
+        print("-------------------------------")
+        allText = send(next_command, display=True)
         next_command = "si"
         endOfProgram = False
         shouldPause = False
@@ -85,17 +86,24 @@ if __name__ == "__main__":
         if endOfProgram:
             break
 
-        curr_inst = send("x/i $pc", display=False)
+        curr_inst = send("x/i $pc")
         allText = send("bt -frame-info location-and-address")
-        allText = send("info locals")
+        allText = send("info locals", display=True)
         prt("curr_inst:", curr_inst, level=2)
 
         if "call" in curr_inst:
-            if "<printf>" in curr_inst:
+            if "_dl_" in curr_inst:
                 next_command = "ni"
-            p = input("command:")
-            while p.strip() != "":
-                send(p)
+            else:
+                if "<printf>" in curr_inst or "<printf@plt>" in curr_inst:
+                    next_command = "ni"
+                    rdiText = send("info registers rdi").strip().split()[4]
+                    print("rdi:", rdiText)
+                    rdiStr = send("p(char*)", rdiText).strip().split("\"")[1]
+                    print("rdistr:", rdiStr)
                 p = input("command:")
+                while p.strip() != "":
+                    send(p)
+                    p = input("command:")
 
         prev_inst = curr_inst
