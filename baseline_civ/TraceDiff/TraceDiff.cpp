@@ -29,6 +29,7 @@ namespace {
       Value *str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
       std::vector<Value *> argsV({str});
       builder.CreateCall(printfFunc, argsV, "calltmp");
+      errs() << "injected " << printStr;
     }
 
     virtual bool runOnFunction(Function &F) {
