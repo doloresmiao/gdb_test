@@ -16,6 +16,15 @@ namespace {
     static char ID;
     TraceDiffPass() : FunctionPass(ID) {}
 
+    StringRef getFunctionName(CallInst *call)
+    {
+        Function *fun = call->getCalledFunction();
+        if (fun) // thanks @Anton Korobeynikov
+            return fun->getName(); // inherited from llvm::Value
+        else
+            return StringRef("indirect call");
+    }
+
     CallInst* injectFPProfileCall(Instruction& point, Instruction& I, BasicBlock& BB, IRBuilder<>& builder, Module* module, bool after) {
       // Declare C standard library printf 
       Type *intType = Type::getInt32Ty(module->getContext());
@@ -28,6 +37,9 @@ namespace {
       else
         printStr += "before ";
       printStr += I.getOpcodeName();
+      if (CallInst* callI = dyn_cast<CallInst>(&I)) {
+        printStr += getFunctionName(callI);
+      }
       printStr += "\n";
       builder.SetInsertPoint(&point);
       Value *str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
