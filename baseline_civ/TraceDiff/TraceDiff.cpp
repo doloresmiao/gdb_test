@@ -16,20 +16,25 @@ namespace {
     static char ID;
     TraceDiffPass() : FunctionPass(ID) {}
 
-    void injectFPProfileCall(Instruction& I, BasicBlock& BB, IRBuilder<>& builder, Module* module) {
-      builder.SetInsertPoint(&I);
+    CallInst* injectFPProfileCall(Instruction& point, Instruction& I, BasicBlock& BB, IRBuilder<>& builder, Module* module, bool after) {
       // Declare C standard library printf 
       Type *intType = Type::getInt32Ty(module->getContext());
       std::vector<Type *> printfArgsTypes({Type::getInt8PtrTy(module->getContext())});
       FunctionType *printfType = FunctionType::get(intType, printfArgsTypes, true);
       FunctionCallee printfFunc = module->getOrInsertFunction("printf", printfType);
       std::string printStr = "ins ";
+      if (after)
+        printStr += " after ";
+      else
+        printStr += "before ";
       printStr += I.getOpcodeName();
       printStr += "\n";
+      builder.SetInsertPoint(&point);
       Value *str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
       std::vector<Value *> argsV({str});
-      builder.CreateCall(printfFunc, argsV, "calltmp");
+      CallInst* call = builder.CreateCall(printfFunc, argsV, "calltmp");
       errs() << "injected " << printStr;
+      return call;
     }
 
     virtual bool runOnFunction(Function &F) {
@@ -45,7 +50,14 @@ namespace {
         errs() << "Basic block (name=" << BB.getName() << ") has "
                   << BB.size() << " instructions.\n";
         #endif
+        Instruction* PrevI = nullptr;
+        bool prevHasFloat = false;
         for (Instruction &I : BB) {
+          CallInst* call = nullptr;
+          if (prevHasFloat) {
+            prevHasFloat = false;
+            call = injectFPProfileCall(I, *PrevI, BB, builder, module, true);
+          }
           if (I.getOpcode() == Instruction::PHI)
             continue;
           bool hasFloat = false;
@@ -54,15 +66,25 @@ namespace {
             if (op->getType()->isFPOrFPVectorTy()) {
               hasFloat = true;
             }
+            if (LoadInst *LMemI = dyn_cast<LoadInst>(&I)) {
+              Value* PtrValue = LMemI->getPointerOperand();
+              Type* PointerElementType = LMemI->getType();
+              if (PointerElementType->isFPOrFPVectorTy()) {
+                hasFloat = true;
+              }
+            }
           }
           if (hasFloat) {
             #if DEBUG_PRINT
             errs() << "has float\n";
             #endif
-            injectFPProfileCall(I, BB, builder, module);
+            injectFPProfileCall(I, I, BB, builder, module, false);
+            prevHasFloat = true;
           }
+          PrevI = &I;
         }
       }
+      errs() << "end of function " << F.getName() << "!\n";
       return false;
     }
 
