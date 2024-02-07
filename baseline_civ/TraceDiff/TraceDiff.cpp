@@ -79,7 +79,8 @@ struct TraceDiffPass : public FunctionPass {
 			Value *result = dyn_cast<Value>(loadI);
 			argsV.push_back(str);
 			argsV.push_back(result);
-		} else if (I.getOpcode() == Instruction::BinaryOps::FAdd) {
+		} else if (isa<FPMathOperator>(&I) && I.isBinaryOp()) {
+		//} else if (I.getOpcode() == Instruction::BinaryOps::FAdd) {
 			if (after) {
 				printStr += " %f\n";
 				Type *intType = Type::getInt32Ty(module->getContext());
