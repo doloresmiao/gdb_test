@@ -27,10 +27,6 @@ namespace {
 
     CallInst* injectFPProfileCall(Instruction& point, Instruction& I, BasicBlock& BB, IRBuilder<>& builder, Module* module, bool after) {
       // Declare C standard library printf 
-      Type *intType = Type::getInt32Ty(module->getContext());
-      std::vector<Type *> printfArgsTypes({Type::getInt8PtrTy(module->getContext())});
-      FunctionType *printfType = FunctionType::get(intType, printfArgsTypes, true);
-      FunctionCallee printfFunc = module->getOrInsertFunction("printf", printfType);
       std::string printStr = "ins ";
       if (after)
         printStr += " after ";
@@ -40,10 +36,32 @@ namespace {
       if (CallInst* callI = dyn_cast<CallInst>(&I)) {
         printStr += getFunctionName(callI);
       }
-      printStr += "\n";
       builder.SetInsertPoint(&point);
-      Value *str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
-      std::vector<Value *> argsV({str});
+      Value* str = nullptr;
+      std::vector<Value*> argsV;
+      FunctionCallee printfFunc;
+      if (StoreInst* storeI = after ? nullptr : dyn_cast<StoreInst>(&I)) {
+        printStr += " %f %x\n";
+        Type *intType = Type::getInt32Ty(module->getContext());
+        std::vector<Type *> printfArgsTypes({Type::getInt8PtrTy(module->getContext()), Type::getDoubleTy(module->getContext()), Type::getDoublePtrTy(module->getContext())});
+        FunctionType *printfType = FunctionType::get(intType, printfArgsTypes, true);
+        printfFunc = module->getOrInsertFunction("printf", printfType);
+        str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());  
+        Value * value_to_store = storeI->getOperand(0);
+        Value * address_of_store = storeI->getOperand(1);
+        argsV.push_back(str);
+        argsV.push_back(value_to_store);
+        argsV.push_back(address_of_store);
+      }
+      else {
+        printStr += "\n";
+        Type *intType = Type::getInt32Ty(module->getContext());
+        std::vector<Type *> printfArgsTypes({Type::getInt8PtrTy(module->getContext())});
+        FunctionType *printfType = FunctionType::get(intType, printfArgsTypes, true);
+        printfFunc = module->getOrInsertFunction("printf", printfType);
+        str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
+        argsV.push_back(str);
+      }
       CallInst* call = builder.CreateCall(printfFunc, argsV, "calltmp");
       errs() << "injected " << printStr;
       return call;
