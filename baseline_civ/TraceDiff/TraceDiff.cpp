@@ -54,7 +54,7 @@ namespace {
         argsV.push_back(address_of_store);
       }
       else if (LoadInst* loadI = after ? dyn_cast<LoadInst>(&I) : nullptr) {
-        printStr += " %f %x\n";
+        printStr += " %f\n";
         Type *intType = Type::getInt32Ty(module->getContext());
         std::vector<Type *> printfArgsTypes({Type::getInt8PtrTy(module->getContext()), Type::getDoubleTy(module->getContext())});
         FunctionType *printfType = FunctionType::get(intType, printfArgsTypes, true);
@@ -63,6 +63,32 @@ namespace {
         Value* result = dyn_cast<Value>(loadI);  
         argsV.push_back(str);
         argsV.push_back(result);     
+      }
+      else if (I.getOpcode() == Instruction::BinaryOps::FAdd) {
+        if (after) {
+          printStr += " %f\n";
+          Type *intType = Type::getInt32Ty(module->getContext());
+          std::vector<Type *> printfArgsTypes({Type::getInt8PtrTy(module->getContext()), Type::getDoubleTy(module->getContext())});
+          FunctionType *printfType = FunctionType::get(intType, printfArgsTypes, true);
+          printfFunc = module->getOrInsertFunction("printf", printfType);
+          str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());   
+          Value* result = dyn_cast<Value>(&I);  
+          argsV.push_back(str);
+          argsV.push_back(result);   
+        }
+        else {
+          printStr += " %f %f\n";
+          Type *intType = Type::getInt32Ty(module->getContext());
+          std::vector<Type *> printfArgsTypes({Type::getInt8PtrTy(module->getContext()), Type::getDoubleTy(module->getContext()), Type::getDoubleTy(module->getContext())});
+          FunctionType *printfType = FunctionType::get(intType, printfArgsTypes, true);
+          printfFunc = module->getOrInsertFunction("printf", printfType);
+          str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
+          Value * num1 = I.getOperand(0);
+          Value * num2 = I.getOperand(1);
+          argsV.push_back(str);
+          argsV.push_back(num1);
+          argsV.push_back(num2);
+        }
       }
       else {
         printStr += "\n";
