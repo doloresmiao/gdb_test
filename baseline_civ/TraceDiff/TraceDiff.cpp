@@ -53,6 +53,17 @@ namespace {
         argsV.push_back(value_to_store);
         argsV.push_back(address_of_store);
       }
+      else if (LoadInst* loadI = after ? dyn_cast<LoadInst>(&I) : nullptr) {
+        printStr += " %f %x\n";
+        Type *intType = Type::getInt32Ty(module->getContext());
+        std::vector<Type *> printfArgsTypes({Type::getInt8PtrTy(module->getContext()), Type::getDoubleTy(module->getContext())});
+        FunctionType *printfType = FunctionType::get(intType, printfArgsTypes, true);
+        printfFunc = module->getOrInsertFunction("printf", printfType);
+        str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());   
+        Value* result = dyn_cast<Value>(loadI);  
+        argsV.push_back(str);
+        argsV.push_back(result);     
+      }
       else {
         printStr += "\n";
         Type *intType = Type::getInt32Ty(module->getContext());
