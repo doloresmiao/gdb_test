@@ -18,8 +18,8 @@ struct TraceDiffPass : public FunctionPass {
 
 	StringRef getFunctionName(CallInst *call) {
 		Function *fun = call->getCalledFunction();
-		if (fun)                 // thanks @Anton Korobeynikov
-			return fun->getName(); // inherited from llvm::Value
+		if (fun)
+			return fun->getName();
 		else
 			return StringRef("indirect call");
 	}
@@ -79,8 +79,35 @@ struct TraceDiffPass : public FunctionPass {
 			Value *result = dyn_cast<Value>(loadI);
 			argsV.push_back(str);
 			argsV.push_back(result);
+		} else if (isa<FPMathOperator>(&I) && I.isUnaryOp()) {
+			if (after) {
+				printStr += " %f\n";
+				Type *intType = Type::getInt32Ty(module->getContext());
+				std::vector<Type *> printfArgsTypes(
+						{Type::getInt8PtrTy(module->getContext()),
+						 Type::getDoubleTy(module->getContext())});
+				FunctionType *printfType =
+						FunctionType::get(intType, printfArgsTypes, true);
+				printfFunc = module->getOrInsertFunction("printf", printfType);
+				str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
+				Value *result = dyn_cast<Value>(&I);
+				argsV.push_back(str);
+				argsV.push_back(result);
+			} else {
+				printStr += " %f\n";
+				Type *intType = Type::getInt32Ty(module->getContext());
+				std::vector<Type *> printfArgsTypes(
+						{Type::getInt8PtrTy(module->getContext()),
+						 Type::getDoubleTy(module->getContext())});
+				FunctionType *printfType =
+						FunctionType::get(intType, printfArgsTypes, true);
+				printfFunc = module->getOrInsertFunction("printf", printfType);
+				str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
+				Value *num1 = I.getOperand(0);
+				argsV.push_back(str);
+				argsV.push_back(num1);
+			}
 		} else if (isa<FPMathOperator>(&I) && I.isBinaryOp()) {
-		//} else if (I.getOpcode() == Instruction::BinaryOps::FAdd) {
 			if (after) {
 				printStr += " %f\n";
 				Type *intType = Type::getInt32Ty(module->getContext());
