@@ -1,7 +1,7 @@
 all: plugin
 
 plugin:
-	$(MAKE) -C baseline_civ/
+	$(MAKE) -C plugins/
 
 clean:
-	$(MAKE) -C baseline_civ/ clean
+	$(MAKE) -C plugins/ clean

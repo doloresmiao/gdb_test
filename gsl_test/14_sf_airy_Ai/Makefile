@@ -88,12 +88,12 @@ main_bc:
 	clang++ -emit-llvm test.c -c -o test.bc $(CUDAFLAGS) $(OPT) $(CFLAGS)
 
 tracediff:
-	opt $(OPTFLAGS) -load ../../baseline_civ/libTraceDiffPass.so -tracediff < minmax.bc > /dev/null
-	opt $(OPTFLAGS) -load ../../baseline_civ/libTraceDiffPass.so -tracediff < log.bc > /dev/null
-	opt $(OPTFLAGS) -load ../../baseline_civ/libTraceDiffPass.so -tracediff < error.bc > /dev/null
-	opt $(OPTFLAGS) -load ../../baseline_civ/libTraceDiffPass.so -tracediff < trig.bc > /dev/null
-	opt $(OPTFLAGS) -load ../../baseline_civ/libTraceDiffPass.so -tracediff < airy.bc > /dev/null
-	opt $(OPTFLAGS) -load ../../baseline_civ/libTraceDiffPass.so -tracediff < test.bc > /dev/null
+	opt $(OPTFLAGS) -load ../../plugins/libTraceDiffPass.so -tracediff < minmax.bc > /dev/null
+	opt $(OPTFLAGS) -load ../../plugins/libTraceDiffPass.so -tracediff < log.bc > /dev/null
+	opt $(OPTFLAGS) -load ../../plugins/libTraceDiffPass.so -tracediff < error.bc > /dev/null
+	opt $(OPTFLAGS) -load ../../plugins/libTraceDiffPass.so -tracediff < trig.bc > /dev/null
+	opt $(OPTFLAGS) -load ../../plugins/libTraceDiffPass.so -tracediff < airy.bc > /dev/null
+	opt $(OPTFLAGS) -load ../../plugins/libTraceDiffPass.so -tracediff < test.bc > /dev/null
 
 main: mk_workspace main_bc tracediff
 	llc -filetype=obj test.bc

@@ -69,4 +69,4 @@ main_bc:
 	clang -O3 -emit-llvm test.cpp -g -c -o test.bc $(CUDAFLAGS) $(OPT) $(LDFLAGS)
 
 tracediff:
-	opt -enable-new-pm=0 -load ../../baseline_civ/libTraceDiffPass.so -tracediff < test.bc > /dev/null
+	opt -enable-new-pm=0 -load ../../plugins/libTraceDiffPass.so -tracediff < test.bc > /dev/null
