@@ -51,7 +51,7 @@ struct TraceDiffPass : public FunctionPass {
 			str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
 			argsV.push_back(str);
 		} else if (StoreInst *storeI = after ? nullptr : dyn_cast<StoreInst>(&I)) {
-			printStr += " %f %x\n";
+			printStr += " %.17g %x\n";
 			Type *intType = Type::getInt32Ty(module->getContext());
 			std::vector<Type *> printfArgsTypes(
 					{Type::getInt8PtrTy(module->getContext()),
@@ -67,7 +67,7 @@ struct TraceDiffPass : public FunctionPass {
 			argsV.push_back(value_to_store);
 			argsV.push_back(address_of_store);
 		} else if (LoadInst *loadI = after ? dyn_cast<LoadInst>(&I) : nullptr) {
-			printStr += " %f\n";
+			printStr += " %.17g\n";
 			Type *intType = Type::getInt32Ty(module->getContext());
 			std::vector<Type *> printfArgsTypes(
 					{Type::getInt8PtrTy(module->getContext()),
@@ -81,7 +81,7 @@ struct TraceDiffPass : public FunctionPass {
 			argsV.push_back(result);
 		} else if (isa<FPMathOperator>(&I) && I.isUnaryOp()) {
 			if (after) {
-				printStr += " %f\n";
+				printStr += " %.17g\n";
 				Type *intType = Type::getInt32Ty(module->getContext());
 				std::vector<Type *> printfArgsTypes(
 						{Type::getInt8PtrTy(module->getContext()),
@@ -94,7 +94,7 @@ struct TraceDiffPass : public FunctionPass {
 				argsV.push_back(str);
 				argsV.push_back(result);
 			} else {
-				printStr += " %f\n";
+				printStr += " %.17g\n";
 				Type *intType = Type::getInt32Ty(module->getContext());
 				std::vector<Type *> printfArgsTypes(
 						{Type::getInt8PtrTy(module->getContext()),
@@ -109,7 +109,7 @@ struct TraceDiffPass : public FunctionPass {
 			}
 		} else if (isa<FPMathOperator>(&I) && I.isBinaryOp()) {
 			if (after) {
-				printStr += " %f\n";
+				printStr += " %.17g\n";
 				Type *intType = Type::getInt32Ty(module->getContext());
 				std::vector<Type *> printfArgsTypes(
 						{Type::getInt8PtrTy(module->getContext()),
@@ -122,7 +122,7 @@ struct TraceDiffPass : public FunctionPass {
 				argsV.push_back(str);
 				argsV.push_back(result);
 			} else {
-				printStr += " %f %f\n";
+				printStr += " %.17g %.17g\n";
 				Type *intType = Type::getInt32Ty(module->getContext());
 				std::vector<Type *> printfArgsTypes(
 						{Type::getInt8PtrTy(module->getContext()),
