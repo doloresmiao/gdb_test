@@ -41,15 +41,57 @@ struct TraceDiffPass : public FunctionPass {
 		FunctionCallee printfFunc;
 		if (CallInst *callI = dyn_cast<CallInst>(&I)) {
 			printStr += getFunctionName(callI);
-			printStr += "\n";
-			Type *intType = Type::getInt32Ty(module->getContext());
-			std::vector<Type *> printfArgsTypes(
-					{Type::getInt8PtrTy(module->getContext())});
-			FunctionType *printfType =
-					FunctionType::get(intType, printfArgsTypes, true);
-			printfFunc = module->getOrInsertFunction("printf", printfType);
-			str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
-			argsV.push_back(str);
+			if (after) {
+				Value *result = dyn_cast<Value>(&I);
+				if (result->getType()->isFPOrFPVectorTy()) {
+					printStr += " %.17g\n";
+					Type *intType = Type::getInt32Ty(module->getContext());
+					std::vector<Type *> printfArgsTypes(
+							{Type::getInt8PtrTy(module->getContext()),
+							Type::getDoubleTy(module->getContext())});
+					FunctionType *printfType =
+							FunctionType::get(intType, printfArgsTypes, true);
+					printfFunc = module->getOrInsertFunction("printf", printfType);
+					str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
+					
+					argsV.push_back(str);
+					argsV.push_back(result);
+				} else {
+					printStr += "\n";
+					Type *intType = Type::getInt32Ty(module->getContext());
+					std::vector<Type *> printfArgsTypes(
+							{Type::getInt8PtrTy(module->getContext())});
+					FunctionType *printfType =
+							FunctionType::get(intType, printfArgsTypes, true);
+					printfFunc = module->getOrInsertFunction("printf", printfType);
+					str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
+					argsV.push_back(str);
+				}
+			}
+			else {
+				std::vector<Type *> printfArgsTypes(
+						{Type::getInt8PtrTy(module->getContext())});
+				Type *intType = Type::getInt32Ty(module->getContext());
+				FunctionType *printfType =
+						FunctionType::get(intType, printfArgsTypes, true);
+				printfFunc = module->getOrInsertFunction("printf", printfType);
+				str = nullptr;
+				argsV.push_back(str);
+				for (unsigned int opI = 0; opI < callI->getNumOperands(); opI++) {
+					Value *op = I.getOperand(opI);
+					if (op->getType()->isFPOrFPVectorTy()) {
+						printStr += " %.17g";
+						printfArgsTypes.push_back(Type::getDoubleTy(module->getContext()));
+						argsV.push_back(callI->getOperand(opI));
+					}
+					else {
+						printStr += " (nf)";
+					}
+				}				
+				printStr += "\n";
+				str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
+				argsV[0] = str;
+			}
 		} else if (StoreInst *storeI = after ? nullptr : dyn_cast<StoreInst>(&I)) {
 			printStr += " %.17g %x\n";
 			Type *intType = Type::getInt32Ty(module->getContext());
