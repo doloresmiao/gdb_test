@@ -42,23 +42,31 @@ ifeq ($(CC), clang++)
 CUDAFLAGS = -x cuda --cuda-gpu-arch=$(CUDA_CC_VERSION) -L/usr/local/cuda/lib64
 else ifeq ($(CC), nvcc)
 CUDAFLAGS = -arch=$(CUDA_CC_VERSION) --expt-relaxed-constexpr -x cu -DCUDA_COMPILE
+else
+CUDAFLAGS =
 endif
 
 CFLAGS = 
-LDFLAGS = $(LIBS) -Wl,-Map,output.map
+LDFLAGS = $(LIBS) -Wl,-Map,output.map -no-pie
 
 default: main
 
 mk_workspace:
 	mkdir -p workspace
 
-
+compile_all:
+	$(MAKE) clean
+	$(MAKE) CC=$(CC) OPT_LEVEL=3 FASTMATH=1
+	mv ./test ./test_o3
+	$(MAKE) clean
+	$(MAKE) CC=$(CC) OPT_LEVEL=0 FASTMATH=0
+	mv ./test ./test_o0
 
 run:
 	python3 ../../driver/auto_gdb.py -p ./test -a 0x433d75089307b26e
 
 main: mk_workspace main_bc tracediff
-	llc -filetype=obj test.bc
+	llc -filetype=obj -march=x86-64 test.bc
 	$(CC) test.o -o test $(OPT) $(LDFLAGS)
 
 clean:
@@ -66,7 +74,7 @@ clean:
 	rm -rf workspace 0*/ output.map
 
 main_bc:
-	clang -O3 -emit-llvm test.cpp -g -c -o test.bc $(CUDAFLAGS) $(OPT) $(LDFLAGS)
+	clang -O3 -emit-llvm test.cpp -g -c -o test.bc $(CUDAFLAGS) $(OPT)
 
 tracediff:
 	opt -enable-new-pm=0 -load ../../plugins/libTraceDiffPass.so -tracediff < test.bc > /dev/null
