@@ -39,7 +39,10 @@ struct TraceDiffPass : public FunctionPass {
 		Value *str = nullptr;
 		std::vector<Value *> argsV;
 		FunctionCallee printfFunc;
-		if (CallInst *callI = dyn_cast<CallInst>(&I)) {
+		if (ReturnInst* retI = dyn_cast<ReturnInst>(&I)) {
+			return nullptr;
+		}
+		else if (CallInst *callI = dyn_cast<CallInst>(&I)) {
 			printStr += getFunctionName(callI);
 			if (after) {
 				Value *result = dyn_cast<Value>(&I);

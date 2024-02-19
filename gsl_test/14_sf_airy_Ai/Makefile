@@ -40,11 +40,11 @@ ifndef $(NEW_CLANG)
 NEW_CLANG = 0
 endif
 
-ifeq ($(NEW_CLANG), 1)
+#ifeq ($(NEW_CLANG), 1)
 OPTFLAGS = -enable-new-pm=0
-else
-OPTFLAGS = 
-endif
+#else
+#OPTFLAGS = 
+#endif
 
 ifndef $(LIBS)
 ifeq ($(CC), nvcc)
@@ -71,6 +71,14 @@ mk_workspace:
 	mkdir -p workspace
 	mkdir -p workspace/func_analysis
 	mkdir -p workspace/original_files
+
+compile_all:
+	$(MAKE) clean
+	$(MAKE) CC=$(CC) OPT_LEVEL=3 FASTMATH=1
+	mv ./test ./test_o3
+	$(MAKE) clean
+	$(MAKE) CC=$(CC) OPT_LEVEL=0 FASTMATH=0
+	mv ./test ./test_o0
 
 run:
 	python3 ../../driver/auto_gdb.py -p ./test -a 0xc30c5912e502289f
