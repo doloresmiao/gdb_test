@@ -46,7 +46,21 @@ struct TraceDiffPass : public FunctionPass {
 			printStr += getFunctionName(callI);
 			if (after) {
 				Value *result = dyn_cast<Value>(&I);
-				if (result->getType()->isFPOrFPVectorTy()) {
+				if (result->getType()->isX86_FP80Ty()) {
+					printStr += " %.17g\n";
+					Type *intType = Type::getInt32Ty(module->getContext());
+					std::vector<Type *> printfArgsTypes(
+							{Type::getInt8PtrTy(module->getContext()),
+							Type::getX86_FP80Ty(module->getContext())});
+					FunctionType *printfType =
+							FunctionType::get(intType, printfArgsTypes, true);
+					printfFunc = module->getOrInsertFunction("printf", printfType);
+					str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
+					
+					argsV.push_back(str);
+					argsV.push_back(result);					
+				}
+				else if (result->getType()->isFPOrFPVectorTy()) {
 					printStr += " %.17g\n";
 					Type *intType = Type::getInt32Ty(module->getContext());
 					std::vector<Type *> printfArgsTypes(
@@ -84,7 +98,12 @@ struct TraceDiffPass : public FunctionPass {
 					Value *op = I.getOperand(opI);
 					if (op->getType()->isFPOrFPVectorTy()) {
 						printStr += " %.17g";
-						printfArgsTypes.push_back(Type::getDoubleTy(module->getContext()));
+						if (op->getType()->isX86_FP80Ty()) {
+							printfArgsTypes.push_back(Type::getX86_FP80Ty(module->getContext()));
+						}
+						else {
+							printfArgsTypes.push_back(Type::getDoubleTy(module->getContext()));
+						}
 						argsV.push_back(callI->getOperand(opI));
 					}
 					else {
@@ -96,21 +115,34 @@ struct TraceDiffPass : public FunctionPass {
 				argsV[0] = str;
 			}
 		} else if (StoreInst *storeI = after ? nullptr : dyn_cast<StoreInst>(&I)) {
-			printStr += " %.17g %x\n";
-			Type *intType = Type::getInt32Ty(module->getContext());
-			std::vector<Type *> printfArgsTypes(
-					{Type::getInt8PtrTy(module->getContext()),
-					 Type::getDoubleTy(module->getContext()),
-					 Type::getDoublePtrTy(module->getContext())});
-			FunctionType *printfType =
-					FunctionType::get(intType, printfArgsTypes, true);
-			printfFunc = module->getOrInsertFunction("printf", printfType);
-			str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
 			Value *value_to_store = storeI->getOperand(0);
-			Value *address_of_store = storeI->getOperand(1);
-			argsV.push_back(str);
-			argsV.push_back(value_to_store);
-			argsV.push_back(address_of_store);
+			if (value_to_store->getType()->isVectorTy()) {
+				printStr += " (vector)\n";
+				Type *intType = Type::getInt32Ty(module->getContext());
+				std::vector<Type *> printfArgsTypes(
+						{Type::getInt8PtrTy(module->getContext())});
+				FunctionType *printfType =
+						FunctionType::get(intType, printfArgsTypes, true);
+				printfFunc = module->getOrInsertFunction("printf", printfType);
+				str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
+				argsV.push_back(str);
+			}
+			else {
+				printStr += " %.17g %x\n";
+				Type *intType = Type::getInt32Ty(module->getContext());
+				std::vector<Type *> printfArgsTypes(
+						{Type::getInt8PtrTy(module->getContext()),
+						Type::getDoubleTy(module->getContext()),
+					 	Type::getDoublePtrTy(module->getContext())});
+				FunctionType *printfType =
+						FunctionType::get(intType, printfArgsTypes, true);
+				printfFunc = module->getOrInsertFunction("printf", printfType);
+				str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
+				Value *address_of_store = storeI->getOperand(1);
+				argsV.push_back(str);
+				argsV.push_back(value_to_store);
+				argsV.push_back(address_of_store);
+			}
 		} else if (LoadInst *loadI = after ? dyn_cast<LoadInst>(&I) : nullptr) {
 			printStr += " %.17g\n";
 			Type *intType = Type::getInt32Ty(module->getContext());
