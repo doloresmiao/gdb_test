@@ -59,22 +59,24 @@ mk_workspace:
 	mkdir -p workspace
 
 compile_all:
-	$(MAKE) clean
+	rm -rf *.o *.bc *.out
+	rm -rf workspace 0*/ output.map
 	$(MAKE) CC=$(CC) OPT_LEVEL=3 FASTMATH=1
 	mv ./test ./test_o3
-	$(MAKE) clean
+	rm -rf *.o *.bc *.out
+	rm -rf workspace 0*/ output.map
 	$(MAKE) CC=$(CC) OPT_LEVEL=0 FASTMATH=0
 	mv ./test ./test_o0
 
 run:
-	python3 ../../driver/auto_gdb.py -p ./test -a 0x433d75089307b26e
+	python3 ../../driver/binary_trace_comp.py -p ./test -a 0x433d75089307b26e
 
 main: mk_workspace main_bc $(if $(findstring $(LLVM_PASS),1),tracediff)
 	llc -filetype=obj -march=x86-64 test.bc
 	$(CC) test.o -o test $(OPT) $(LDFLAGS)
 
 clean:
-	rm -rf *.o *.bc test_* *.out
+	rm -rf *.o *.bc test_* test *.out
 	rm -rf workspace 0*/ output.map
 
 main_bc:
