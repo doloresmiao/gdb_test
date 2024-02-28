@@ -6,6 +6,8 @@ import re
 import pexpect
 import argparse
 
+skipFunctionList = ["pow", "cbrt"]
+
 gdb = None
 count = 0
 Verbose = 2
@@ -46,17 +48,19 @@ def send(*txt, **kwargs):
     return allText
 
 def TestProgram(name):
+    print("running ", name)
     send("file", name)
     
     send("b", "main")
     
     send("r ", *Arguments)
-    os.system('cls' if os.name == 'nt' else 'clear')
+    #os.system('cls' if os.name == 'nt' else 'clear')
+    traceName = os.path.splitext(os.path.basename(name))[0]
     prev_inst = ""
     next_command = "si"
     while True:    
-        print("-------------------------------")
-        allText = send(next_command, display=True)
+        #print("-------------------------------")
+        allText = send(next_command)
         next_command = "si"
         endOfProgram = False
         shouldPause = False
@@ -66,17 +70,23 @@ def TestProgram(name):
             break
 
         curr_inst = send("x/i $pc")
-        allText = send("bt -frame-info location-and-address")
-        allText = send("info locals", display=True)
-        prt("curr_inst:", curr_inst, level=2)
-        if "xmm" in curr_inst:
-            traceName = os.path.splitext(os.path.basename(name))[0]
+        #allText = send("bt -frame-info location-and-address")
+        registerText = send("i", "r")
+        print(registerText, file=open(traceName + "_reg.txt", "w"))
+        #prt("curr_inst:", curr_inst, level=2)
+        if "%xmm" in curr_inst:
             print("curr_inst:", curr_inst.splitlines()[-1], file=open(traceName + "_trace.txt", "a"))
+        if "__libc_start_call_main" in curr_inst:
+            break
 
         if "call" in curr_inst:
-            if "_dl_" in curr_inst:
+            if "_dl_" in curr_inst or "_IO_" in curr_inst:
                 next_command = "ni"
             else:
+                print("curr_inst:", curr_inst.splitlines()[-1], file=open(traceName + "_trace.txt", "a"))
+                for func in skipFunctionList:
+                    if "<" + func + ">" in curr_inst or "<" + func + "@plt>" in curr_inst:
+                        next_command = "ni"
                 if "<printf>" in curr_inst or "<printf@plt>" in curr_inst:
                     next_command = "ni"
                     rdiText = send("info registers rdi").strip().split()[4]
