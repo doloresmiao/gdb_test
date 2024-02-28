@@ -53,7 +53,7 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", type=int, choices=[0, 1, 2, 3], default=2, help="set output verbosity (0=error, 1=warning, 2=info, 3=low priority info)")
     args = parser.parse_args()
     Verbose = args.verbose
-    ProgramName = args.program
+    ProgramName = args.program + "_o0"
     Arguments = args.args
     print("program:", ProgramName, "args:", Arguments)
 

@@ -2,6 +2,10 @@ ifndef $(CC)
 CC = clang
 endif
 
+ifndef (LLVM_PASS)
+LLVM_PASS = 0
+endif
+
 OPT = -O0
 
 ifeq ($(OPT_LEVEL), 0)
@@ -65,12 +69,12 @@ compile_all:
 run:
 	python3 ../../driver/auto_gdb.py -p ./test -a 0x433d75089307b26e
 
-main: mk_workspace main_bc tracediff
+main: mk_workspace main_bc $(if $(findstring $(LLVM_PASS),1),tracediff)
 	llc -filetype=obj -march=x86-64 test.bc
 	$(CC) test.o -o test $(OPT) $(LDFLAGS)
 
 clean:
-	rm -rf *.o *.bc test *.out
+	rm -rf *.o *.bc test_* *.out
 	rm -rf workspace 0*/ output.map
 
 main_bc:
