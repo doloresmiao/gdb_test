@@ -48,6 +48,7 @@ def send(*txt, **kwargs):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--interactive", dest='interactive', action='store_true', help='interactive mode')
     parser.add_argument("-p", "--program", type=str, help="the program to be tested", required=True)
     parser.add_argument("-a", "--args", nargs='+', help="Program arguments", required=True)
     parser.add_argument("-v", "--verbose", type=int, choices=[0, 1, 2, 3], default=2, help="set output verbosity (0=error, 1=warning, 2=info, 3=low priority info)")
@@ -90,6 +91,8 @@ if __name__ == "__main__":
         allText = send("bt -frame-info location-and-address")
         allText = send("info locals", display=True)
         prt("curr_inst:", curr_inst, level=2)
+        if "xmm" in curr_inst:
+            print("curr_inst:", curr_inst.strip(), file=open("trace.txt", "a"))
 
         if "call" in curr_inst:
             if "_dl_" in curr_inst:
@@ -101,9 +104,10 @@ if __name__ == "__main__":
                     print("rdi:", rdiText)
                     rdiStr = send("p(char*)", rdiText).strip().split("\"")[1]
                     print("rdistr:", rdiStr)
-                p = input("command:")
-                while p.strip() != "":
-                    send(p)
+                if args.interactive:
                     p = input("command:")
+                    while p.strip() != "":
+                        send(p)
+                        p = input("command:")
 
         prev_inst = curr_inst
