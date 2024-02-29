@@ -6,6 +6,7 @@ import re
 import pexpect
 import argparse
 from enum import Enum
+from ast import literal_eval 
 
 skipFunctionList = ["pow", "cbrt"]
 
@@ -64,6 +65,7 @@ def PrintOp(traceName, curr_inst, prev_inst):
     ins_type = inst.split()[0].strip()
     if ins_type == "call":
         ins_operands = re.split("[<>]", inst)[1].strip()
+        print("curr_inst:", ins_type, ins_operands, file=open(traceName + "_trace.txt", "a"))
     else:
         ins_operands = inst.split()[1].strip()
         if ins_type.endswith("ss"):
@@ -81,21 +83,28 @@ def PrintOp(traceName, curr_inst, prev_inst):
         ins_operands = ins_operands.split(",")
 
         # extract operands
+        regs = []
         for op in ins_operands:
             if op.startswith("%xmm"): #register
                 regText = send("p", op.replace("%", "$"))
                 allsizes = re.split("v8_bfloat16", regText)[1]
-                regs = "(none)"
+                reg = "(none)"
                 if ins_fptype == FPType.ScalarSingle or ins_fptype == FPType.PackedSingle:
-                    regs = re.split("[{}]", allsizes)[5]
+                    reg = re.split("[{}]", allsizes)[5]
                 elif ins_fptype == FPType.ScalarDouble or ins_fptype == FPType.PackedDouble:
-                    regs = re.split("[{}]", allsizes)[7]
-                print("regs:", regs)
+                    reg = re.split("[{}]", allsizes)[7]
+                elif ins_fptype == FPType.PackedBitwise:
+                    reg = re.split("uint128", regText)[1].replace(" = ", "").replace("}", "").strip()
             elif "(" in op: # addressing
                 addPtr = re.split("[()]", op)[1].strip().replace("%", "$")
-                regText = send("p", addPtr, display=True)
-
-    print("curr_inst:", ins_type, ins_operands, file=open(traceName + "_trace.txt", "a"))
+                regText = send("p/x", addPtr)
+                reg = regText.splitlines()[-1].split("=")[1].strip()
+                addr = literal_eval(reg)
+                offset = literal_eval(re.split("[()]", op)[0].strip())
+                regText = send("x", str(addr + offset))
+                reg = regText.splitlines()[-1].split(":")[1].strip()
+            regs.append(reg)
+        print("curr_inst:", ins_type, ins_operands, regs, file=open(traceName + "_trace.txt", "a"))
 
     # register: print value according to instruction size
     # addressing: get value first, addressing, then print value according to instruction size
