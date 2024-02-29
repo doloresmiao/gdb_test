@@ -5,8 +5,18 @@ import json
 import re
 import pexpect
 import argparse
+from enum import Enum
 
 skipFunctionList = ["pow", "cbrt"]
+
+class FPType(Enum):
+    ScalarSingle = 0
+    ScalarDouble = 1
+    PackedSingle = 2
+    PackedDouble = 3
+    PackedBitwise = 4
+
+PackedBitwise = set(["pand", "pandn", "por", "pxor"])
 
 gdb = None
 count = 0
@@ -53,9 +63,21 @@ def PrintOp(traceName, curr_inst, prev_inst):
     # extract instruction type
     ins_type = inst.split()[0].strip()
     if ins_type == "call":
-        ins_operands = re.split("[<>]", inst)[1].strip() #inst.split("")[2].strip()
+        ins_operands = re.split("[<>]", inst)[1].strip()
     else:
         ins_operands = inst.split()[1].strip()
+        if ins_type.endswith("ss"):
+            ins_fptype = FPType.ScalarSingle
+        elif ins_type.endswith("sd"):
+            ins_fptype = FPType.ScalarDouble
+        elif ins_type.endswith("ps"):
+            ins_fptype = FPType.PackedSingle
+        elif ins_type.endswith("pd"):
+            ins_fptype = FPType.PackedDouble
+        elif ins_type in PackedBitwise:
+            ins_fptype = FPType.PackedBitwise
+        else:
+            print("new type of instructions:" + ins_type)
     print("curr_inst:", ins_type, ins_operands, file=open(traceName + "_trace.txt", "a"))
 
     # register: print value according to instruction size
@@ -100,6 +122,8 @@ def TestProgram(name):
         registerText = send("i", "r")
         print(registerText, file=open(traceName + "_reg.txt", "w"))
         #prt("curr_inst:", curr_inst, level=2)
+        if "__libc_start_call_main" in curr_inst:
+            break
         if "call" in curr_inst:
             if "_dl_" in curr_inst or "_IO_" in curr_inst:
                 next_command = "ni"
@@ -119,10 +143,8 @@ def TestProgram(name):
                     while p.strip() != "":
                         send(p, display=True)
                         p = input("command:")
-        if "%xmm" in curr_inst and not "mov" in curr_inst:
+        if ("%xmm" in curr_inst) and (not "mov" in curr_inst):
             PrintOp(traceName, curr_inst, prev_inst)
-        if "__libc_start_call_main" in curr_inst:
-            break
 
         prev_inst = curr_inst
     
