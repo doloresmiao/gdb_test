@@ -48,6 +48,17 @@ def send(*txt, **kwargs):
     return allText
 
 def TestProgram(name):
+    global gdb
+    gdb = pexpect.spawn('gdb')
+    gdb.delaybeforesend = None
+    gdb.delayafterread = None
+    gdb.delayafterclose = None
+    gdb.delayafterterminate = None    
+    recv(False)
+    send("set", "pagination", "off")
+    send("set", "print", "asm-demangle", "on")
+    send("set", "disassemble-next-line", "on")
+    
     print("running ", name)
     send("file", name)
     
@@ -96,10 +107,12 @@ def TestProgram(name):
                 if args.interactive:
                     p = input("command:")
                     while p.strip() != "":
-                        send(p)
+                        send(p, display=True)
                         p = input("command:")
 
         prev_inst = curr_inst
+    
+    gdb.close()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -113,27 +126,6 @@ if __name__ == "__main__":
     Arguments = args.args
     print("program:", ProgramName, "args:", Arguments)
 
-    gdb = pexpect.spawn('gdb')
-    gdb.delaybeforesend = None
-    gdb.delayafterread = None
-    gdb.delayafterclose = None
-    gdb.delayafterterminate = None    
-    recv(True)
-    send("set", "pagination", "off")
-    send("set", "print", "asm-demangle", "on")
-    send("set", "disassemble-next-line", "on")
-
     TestProgram(ProgramName + "_o0")
-    gdb.close()
-
-    gdb = pexpect.spawn('gdb')
-    gdb.delaybeforesend = None
-    gdb.delayafterread = None
-    gdb.delayafterclose = None
-    gdb.delayafterterminate = None    
-    recv(True)
-    send("set", "pagination", "off")
-    send("set", "print", "asm-demangle", "on")
-    send("set", "disassemble-next-line", "on")
     TestProgram(ProgramName + "_o3")
-    gdb.close()
+ 
