@@ -78,6 +78,23 @@ def PrintOp(traceName, curr_inst, prev_inst):
             ins_fptype = FPType.PackedBitwise
         else:
             print("new type of instructions:" + ins_type)
+        ins_operands = ins_operands.split(",")
+
+        # extract operands
+        for op in ins_operands:
+            if op.startswith("%xmm"): #register
+                regText = send("p", op.replace("%", "$"))
+                allsizes = re.split("v8_bfloat16", regText)[1]
+                regs = "(none)"
+                if ins_fptype == FPType.ScalarSingle or ins_fptype == FPType.PackedSingle:
+                    regs = re.split("[{}]", allsizes)[5]
+                elif ins_fptype == FPType.ScalarDouble or ins_fptype == FPType.PackedDouble:
+                    regs = re.split("[{}]", allsizes)[7]
+                print("regs:", regs)
+            elif "(" in op: # addressing
+                addPtr = re.split("[()]", op)[1].strip().replace("%", "$")
+                regText = send("p", addPtr, display=True)
+
     print("curr_inst:", ins_type, ins_operands, file=open(traceName + "_trace.txt", "a"))
 
     # register: print value according to instruction size
