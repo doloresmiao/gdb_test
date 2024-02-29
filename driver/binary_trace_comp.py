@@ -47,6 +47,21 @@ def send(*txt, **kwargs):
     allText = recv(display)
     return allText
 
+def PrintOp(traceName, curr_inst, prev_inst):
+    inst = curr_inst.splitlines()[-1].split(":")[-1].strip()
+
+    # extract instruction type
+    ins_type = inst.split()[0].strip()
+    if ins_type == "call":
+        ins_operands = inst.split()[2].strip()
+    else:
+        ins_operands = inst.split()[1].strip()
+    print("curr_inst:", ins_type, ins_operands, file=open(traceName + "_trace.txt", "a"))
+
+    # register: print value according to instruction size
+    # addressing: get value first, addressing, then print value according to instruction size
+    return
+
 def TestProgram(name):
     global gdb
     gdb = pexpect.spawn('gdb')
@@ -85,16 +100,11 @@ def TestProgram(name):
         registerText = send("i", "r")
         print(registerText, file=open(traceName + "_reg.txt", "w"))
         #prt("curr_inst:", curr_inst, level=2)
-        if "%xmm" in curr_inst:
-            print("curr_inst:", curr_inst.splitlines()[-1], file=open(traceName + "_trace.txt", "a"))
-        if "__libc_start_call_main" in curr_inst:
-            break
-
         if "call" in curr_inst:
             if "_dl_" in curr_inst or "_IO_" in curr_inst:
                 next_command = "ni"
             else:
-                print("curr_inst:", curr_inst.splitlines()[-1], file=open(traceName + "_trace.txt", "a"))
+                PrintOp(traceName, curr_inst, prev_inst)
                 for func in skipFunctionList:
                     if "<" + func + ">" in curr_inst or "<" + func + "@plt>" in curr_inst:
                         next_command = "ni"
@@ -109,6 +119,10 @@ def TestProgram(name):
                     while p.strip() != "":
                         send(p, display=True)
                         p = input("command:")
+        if "%xmm" in curr_inst and not "mov" in curr_inst:
+            PrintOp(traceName, curr_inst, prev_inst)
+        if "__libc_start_call_main" in curr_inst:
+            break
 
         prev_inst = curr_inst
     
