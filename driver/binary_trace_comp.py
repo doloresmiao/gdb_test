@@ -53,7 +53,7 @@ def PrintOp(traceName, curr_inst, prev_inst):
     # extract instruction type
     ins_type = inst.split()[0].strip()
     if ins_type == "call":
-        ins_operands = inst.split()[2].strip()
+        ins_operands = re.split("[<>]", inst)[1].strip() #inst.split("")[2].strip()
     else:
         ins_operands = inst.split()[1].strip()
     print("curr_inst:", ins_type, ins_operands, file=open(traceName + "_trace.txt", "a"))
