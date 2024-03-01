@@ -58,6 +58,11 @@ def send(*txt, **kwargs):
     allText = recv(display)
     return allText
 
+def PrintAddr(addr):
+    regText = send("x/x", str(addr))
+    print("regtext2:", regText.splitlines()[-1])
+    return regText.splitlines()[-1].split(":")[1].strip()
+
 def PrintOp(traceName, curr_inst, prev_inst):
     inst = curr_inst.splitlines()[-1].split(":")[-1].strip()
 
@@ -96,13 +101,17 @@ def PrintOp(traceName, curr_inst, prev_inst):
                 elif ins_fptype == FPType.PackedBitwise:
                     reg = re.split("uint128", regText)[1].replace(" = ", "").replace("}", "").strip()
             elif "(" in op: # addressing
-                addPtr = re.split("[()]", op)[1].strip().replace("%", "$")
-                regText = send("p/x", addPtr)
-                reg = regText.splitlines()[-1].split("=")[1].strip()
-                addr = literal_eval(reg)
-                offset = literal_eval(re.split("[()]", op)[0].strip())
-                regText = send("x", str(addr + offset))
-                reg = regText.splitlines()[-1].split(":")[1].strip()
+                if "#" in curr_inst:
+                    addr = inst.split("#")[-1].strip()
+                    addr = literal_eval(addr)
+                    reg = PrintAddr(addr)
+                else:
+                    addPtr = re.split("[()]", op)[1].strip().replace("%", "$")
+                    regText = send("p/x", addPtr)
+                    reg = regText.splitlines()[-1].split("=")[1].strip()
+                    addr = literal_eval(reg)
+                    offset = literal_eval(re.split("[()]", op)[0].strip())
+                    reg = PrintAddr(addr + offset)
             regs.append(reg)
         print("curr_inst:", ins_type, ins_operands, regs, file=open(traceName + "_trace.txt", "a"))
 
