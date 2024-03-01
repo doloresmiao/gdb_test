@@ -69,7 +69,7 @@ compile_all:
 	mv ./test ./test_o0
 
 run:
-	python3 ../../driver/binary_trace_comp.py -p ./test -a 0x42c80000 0x42c80000
+	python3 ../../driver/binary_trace_comp.py -p ./test -a 0x42c80000 0x3f800000
 
 main: mk_workspace main_bc $(if $(findstring $(LLVM_PASS),1),tracediff)
 	llc -filetype=obj -march=x86-64 test.bc
