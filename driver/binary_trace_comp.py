@@ -75,7 +75,7 @@ def PrintAddr(fptype, addr):
         regText = send("x/2fg", str(addr))
         return regText.splitlines()[-1].split(":")[1].strip().replace("\t", " ")              
 
-def PrintResult(traceName, prev_inst):
+def PrintResult(traceName, prev_inst, list_text):
    # print current instruction
     inst = prev_inst.splitlines()[-1].split(":")[-1].strip()
 
@@ -83,7 +83,7 @@ def PrintResult(traceName, prev_inst):
     ins_type = inst.split()[0].strip()
     if ins_type == "call":
         # TODO: add call results
-        print(" ", file=open(traceName + "_trace.txt", "a"))    
+        print(" (", end="", file=open(traceName + "_trace.txt", "a"))    
     else:
         ins_operands = inst.split()[1].strip()
         if ins_type in PackedBitwise:
@@ -136,7 +136,8 @@ def PrintResult(traceName, prev_inst):
                 offset = literal_eval(re.split("[()]", op)[0].strip())
                 reg = PrintAddr(ins_fptype, addr + offset)
         regs.append(reg)
-        print("result:", regs, file=open(traceName + "_trace.txt", "a"))    
+        print("result:", regs, "(", end="", file=open(traceName + "_trace.txt", "a"))    
+    print(re.split("[()]", list_text.strip())[-2], ")", file=open(traceName + "_trace.txt", "a"))  
     return
 
 def PrintOp(traceName, curr_inst):    
@@ -148,7 +149,7 @@ def PrintOp(traceName, curr_inst):
     if ins_type == "call":
         # TODO: add call parameters
         ins_operands = re.split("[<>]", inst)[1].strip()
-        print("curr_inst:", ins_type, ins_operands, file=open(traceName + "_trace.txt", "a"))
+        print("curr_inst:", ins_type, ins_operands, end="", file=open(traceName + "_trace.txt", "a"))
     else:
         ins_operands = inst.split()[1].strip()
         if ins_type in PackedBitwise:
@@ -202,7 +203,7 @@ def PrintOp(traceName, curr_inst):
                     reg = PrintAddr(ins_fptype, addr + offset)
             regs.append(reg)
         print("curr_inst:", ins_type, ins_operands, regs, end='|', file=open(traceName + "_trace.txt", "a"))
-    return
+    return send("list *$pc").splitlines()[2]
 
 def TestProgram(name):
     global gdb
@@ -227,6 +228,7 @@ def TestProgram(name):
     prev_inst = ""
     next_command = "si"
     prev_print = False
+    list_text = ""
     while True:    
         #print("-------------------------------")
         allText = send(next_command)
@@ -240,7 +242,7 @@ def TestProgram(name):
 
         # print prev instruction results
         if prev_print:
-            PrintResult(traceName, prev_inst)
+            PrintResult(traceName, prev_inst, list_text)
             prev_print = False
 
         curr_inst = send("x/i $pc")
@@ -254,7 +256,7 @@ def TestProgram(name):
             if "_dl_" in curr_inst or "_IO_" in curr_inst:
                 next_command = "ni"
             else:
-                PrintOp(traceName, curr_inst)
+                list_text = PrintOp(traceName, curr_inst)
                 prev_print = True
                 for func in skipFunctionList:
                     if "<" + func + ">" in curr_inst or "<" + func + "@plt>" in curr_inst:
@@ -271,7 +273,7 @@ def TestProgram(name):
                         send(p, display=True)
                         p = input("command:")
         if ("%xmm" in curr_inst) and (not "mov" in curr_inst):
-            PrintOp(traceName, curr_inst)
+            list_text = PrintOp(traceName, curr_inst)
             prev_print = True
 
         prev_inst = curr_inst
