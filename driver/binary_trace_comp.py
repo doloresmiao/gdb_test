@@ -75,12 +75,78 @@ def PrintAddr(fptype, addr):
         regText = send("x/2fg", str(addr))
         return regText.splitlines()[-1].split(":")[1].strip().replace("\t", " ")              
 
-def PrintOp(traceName, curr_inst, prev_inst):
+def PrintResult(traceName, prev_inst):
+   # print current instruction
+    inst = prev_inst.splitlines()[-1].split(":")[-1].strip()
+
+    # extract instruction type
+    ins_type = inst.split()[0].strip()
+    if ins_type == "call":
+        # TODO: add call results
+        print(" ", file=open(traceName + "_trace.txt", "a"))    
+    else:
+        ins_operands = inst.split()[1].strip()
+        if ins_type in PackedBitwise:
+            ins_fptype = FPType.PackedBitwise
+        elif ins_type.endswith("ss"):
+            ins_fptype = FPType.ScalarSingle
+        elif ins_type.endswith("sd"):
+            ins_fptype = FPType.ScalarDouble
+        elif ins_type.endswith("ps"):
+            if ins_type.startswith("and") or ins_type.startswith("or") or ins_type.startswith("xor"):
+                ins_fptype = FPType.PackedBitwise
+            else:
+                ins_fptype = FPType.PackedSingle
+        elif ins_type.endswith("pd"):
+            if ins_type.startswith("andp") or ins_type.startswith("orp") or ins_type.startswith("xorp"):
+                ins_fptype = FPType.PackedBitwise
+            else:
+                ins_fptype = FPType.PackedDouble
+        else:
+            print("new type of instructions:" + ins_type)
+        ins_operands = ins_operands.split(",")
+
+        # extract operands
+        regs = []
+        op = ins_operands[-1]
+        if op.startswith("%xmm"): #register
+            regText = send("p", op.replace("%", "$"))
+            allsizes = re.split("v8_bfloat16", regText)[1]
+            reg = "(none)"
+            if ins_fptype == FPType.ScalarSingle:
+                reg = re.split("[{}]", allsizes)[5].split(",")[0]
+            elif ins_fptype == FPType.PackedSingle:
+                reg = re.split("[{}]", allsizes)[5]
+            elif ins_fptype == FPType.ScalarDouble:
+                reg = re.split("[{}]", allsizes)[7].split(",")[0]
+            elif ins_fptype == FPType.PackedDouble:
+                reg = re.split("[{}]", allsizes)[7]
+            elif ins_fptype == FPType.PackedBitwise:
+                reg = re.split("uint128", regText)[1].replace(" = ", "").replace("}", "").strip()
+        elif "(" in op: # addressing
+            if "#" in prev_inst:
+                addr = inst.split("#")[-1].strip()
+                addr = literal_eval(addr)
+                reg = PrintAddr(ins_fptype, addr)
+            else:
+                addPtr = re.split("[()]", op)[1].strip().replace("%", "$")
+                regText = send("p/x", addPtr)
+                reg = regText.splitlines()[-1].split("=")[1].strip()
+                addr = literal_eval(reg)
+                offset = literal_eval(re.split("[()]", op)[0].strip())
+                reg = PrintAddr(ins_fptype, addr + offset)
+        regs.append(reg)
+        print("result:", regs, file=open(traceName + "_trace.txt", "a"))    
+    return
+
+def PrintOp(traceName, curr_inst):    
+    # print current instruction
     inst = curr_inst.splitlines()[-1].split(":")[-1].strip()
 
     # extract instruction type
     ins_type = inst.split()[0].strip()
     if ins_type == "call":
+        # TODO: add call parameters
         ins_operands = re.split("[<>]", inst)[1].strip()
         print("curr_inst:", ins_type, ins_operands, file=open(traceName + "_trace.txt", "a"))
     else:
@@ -135,10 +201,7 @@ def PrintOp(traceName, curr_inst, prev_inst):
                     offset = literal_eval(re.split("[()]", op)[0].strip())
                     reg = PrintAddr(ins_fptype, addr + offset)
             regs.append(reg)
-        print("curr_inst:", ins_type, ins_operands, regs, file=open(traceName + "_trace.txt", "a"))
-
-    # register: print value according to instruction size
-    # addressing: get value first, addressing, then print value according to instruction size
+        print("curr_inst:", ins_type, ins_operands, regs, end='|', file=open(traceName + "_trace.txt", "a"))
     return
 
 def TestProgram(name):
@@ -163,6 +226,7 @@ def TestProgram(name):
     traceName = os.path.splitext(os.path.basename(name))[0]
     prev_inst = ""
     next_command = "si"
+    prev_print = False
     while True:    
         #print("-------------------------------")
         allText = send(next_command)
@@ -173,6 +237,11 @@ def TestProgram(name):
             endOfProgram = True
         if endOfProgram:
             break
+
+        # print prev instruction results
+        if prev_print:
+            PrintResult(traceName, prev_inst)
+            prev_print = False
 
         curr_inst = send("x/i $pc")
         #allText = send("bt -frame-info location-and-address")
@@ -185,7 +254,8 @@ def TestProgram(name):
             if "_dl_" in curr_inst or "_IO_" in curr_inst:
                 next_command = "ni"
             else:
-                PrintOp(traceName, curr_inst, prev_inst)
+                PrintOp(traceName, curr_inst)
+                prev_print = True
                 for func in skipFunctionList:
                     if "<" + func + ">" in curr_inst or "<" + func + "@plt>" in curr_inst:
                         next_command = "ni"
@@ -201,7 +271,8 @@ def TestProgram(name):
                         send(p, display=True)
                         p = input("command:")
         if ("%xmm" in curr_inst) and (not "mov" in curr_inst):
-            PrintOp(traceName, curr_inst, prev_inst)
+            PrintOp(traceName, curr_inst)
+            prev_print = True
 
         prev_inst = curr_inst
     
