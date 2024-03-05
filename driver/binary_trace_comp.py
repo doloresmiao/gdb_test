@@ -83,7 +83,7 @@ def PrintResult(traceName, prev_inst, list_text):
     ins_type = inst.split()[0].strip()
     if ins_type == "call":
         # TODO: add call results
-        print(" (", end="", file=open(traceName + "_trace.txt", "a"))    
+        print(" | ", end="", file=open(traceName + "_trace.txt", "a"))    
     else:
         ins_operands = inst.split()[1].strip()
         if ins_type in PackedBitwise:
@@ -136,8 +136,8 @@ def PrintResult(traceName, prev_inst, list_text):
                 offset = literal_eval(re.split("[()]", op)[0].strip())
                 reg = PrintAddr(ins_fptype, addr + offset)
         regs.append(reg)
-        print("result:", regs, "(", end="", file=open(traceName + "_trace.txt", "a"))    
-    print(re.split("[()]", list_text.strip())[-2], ")", file=open(traceName + "_trace.txt", "a"))  
+        print("result:", regs, "|", end=" ", file=open(traceName + "_trace.txt", "a"))  
+    print(list_text.split(" in ")[1], file=open(traceName + "_trace.txt", "a"))  
     return
 
 def PrintOp(traceName, curr_inst):    
@@ -202,7 +202,7 @@ def PrintOp(traceName, curr_inst):
                     offset = literal_eval(re.split("[()]", op)[0].strip())
                     reg = PrintAddr(ins_fptype, addr + offset)
             regs.append(reg)
-        print("curr_inst:", ins_type, ins_operands, regs, end='|', file=open(traceName + "_trace.txt", "a"))
+        print("curr_inst:", ins_type, ins_operands, regs, end=' | ', file=open(traceName + "_trace.txt", "a"))
     return send("list *$pc").splitlines()[2]
 
 def TestProgram(name):
