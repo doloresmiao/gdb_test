@@ -8,7 +8,7 @@ import argparse
 from enum import Enum
 from ast import literal_eval 
 
-skipFunctionList = ["pow", "cbrt"]
+skipFunctionList = ["pow", "cbrt", "sqrtf64"]
 
 class FPType(Enum):
     ScalarSingle = 0
@@ -148,7 +148,11 @@ def PrintOp(traceName, curr_inst):
     ins_type = inst.split()[0].strip()
     if ins_type == "call":
         # TODO: add call parameters
-        ins_operands = re.split("[<>]", inst)[1].strip()
+        call_op = re.split("[<>]", inst)
+        if len(call_op) > 1:
+            ins_operands = re.split("[<>]", inst)[1].strip()
+        else:
+            ins_operands = inst.split("")[1].strip()
         print("curr_inst:", ins_type, ins_operands, end="", file=open(traceName + "_trace.txt", "a"))
     else:
         ins_operands = inst.split()[1].strip()
@@ -170,7 +174,7 @@ def PrintOp(traceName, curr_inst):
                 ins_fptype = FPType.PackedDouble
         else:
             print("new type of instructions:" + ins_type)
-        ins_operands = ins_operands.split(",")
+        ins_operands = re.split(r',\s*(?![^()]*\))', ins_operands)
 
         # extract operands
         regs = []
@@ -190,7 +194,9 @@ def PrintOp(traceName, curr_inst):
                 elif ins_fptype == FPType.PackedBitwise:
                     reg = re.split("uint128", regText)[1].replace(" = ", "").replace("}", "").strip()
             elif "(" in op: # addressing
-                if "#" in curr_inst:
+                if op[0] == '(' and op[-1] == ')':
+                    reg = "(new addressing)"
+                elif "#" in curr_inst:
                     addr = inst.split("#")[-1].strip()
                     addr = literal_eval(addr)
                     reg = PrintAddr(ins_fptype, addr)
@@ -203,7 +209,12 @@ def PrintOp(traceName, curr_inst):
                     reg = PrintAddr(ins_fptype, addr + offset)
             regs.append(reg)
         print("curr_inst:", ins_type, ins_operands, regs, end=' | ', file=open(traceName + "_trace.txt", "a"))
-    return send("list *$pc").splitlines()[2]
+    list_text = send("list *$pc").splitlines()
+    if len(list_text) <= 2:
+        list_text = " in (none)"
+    else:
+        list_text = list_text[2]
+    return list_text
 
 def TestProgram(name):
     global gdb

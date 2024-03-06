@@ -2,6 +2,10 @@ ifndef $(CC)
 CC = gcc
 endif
 
+ifndef (LLVM_PASS)
+LLVM_PASS = 0
+endif
+
 ifndef $(OPT_LEVEL)
 OPT_LEVEL = 0
 endif
@@ -81,7 +85,7 @@ compile_all:
 	mv ./test ./test_o0
 
 run:
-	python3 ../../driver/auto_gdb.py -p ./test -a 0xc30c5912e502289f
+	python3 ../../driver/binary_trace_comp.py -p ./test -a 0xc30c5912e502289f
 
 clean:
 	rm -rf *.o *.bc test *.out
@@ -103,7 +107,7 @@ tracediff:
 	opt $(OPTFLAGS) -load ../../plugins/libTraceDiffPass.so -tracediff < airy.bc > /dev/null
 	opt $(OPTFLAGS) -load ../../plugins/libTraceDiffPass.so -tracediff < test.bc > /dev/null
 
-main: mk_workspace main_bc tracediff
+main: mk_workspace main_bc $(if $(findstring $(LLVM_PASS),1),tracediff)
 	llc -filetype=obj test.bc
 	llc -filetype=obj minmax.bc
 	llc -filetype=obj log.bc
