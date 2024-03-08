@@ -1,5 +1,9 @@
 ifndef $(CC)
-CC = clang
+CC = gcc
+endif
+
+ifndef (LLVM_PASS)
+LLVM_PASS = 0
 endif
 
 ifndef $(OPT_LEVEL)
@@ -36,6 +40,16 @@ OPT += -ffast-math
 endif
 endif
 
+ifndef $(NEW_CLANG)
+NEW_CLANG = 0
+endif
+
+#ifeq ($(NEW_CLANG), 1)
+OPTFLAGS = -enable-new-pm=0
+#else
+#OPTFLAGS = 
+#endif
+
 ifndef $(LIBS)
 ifeq ($(CC), nvcc)
 LIBS += -lcudart_static -ldl -lrt -lpthread
@@ -48,8 +62,8 @@ ifeq ($(CC), nvcc)
 CUDAFLAGS = -arch=$(CUDA_CC_VERSION) --expt-relaxed-constexpr -x cu -DCUDA_COMPILE
 endif
 
-CFLAGS = -I/usr/local/include -I../ -I./
-LDFLAGS = $(LIBS) -Wl,-Map,output.map
+CFLAGS = -I/usr/local/include -I../ -I./ -g
+LDFLAGS = $(LIBS) -Wl,-Map,output.map -g
 
 ifeq ($(GLOBAL_TEXT_OUTPUT), 1)
 CFLAGS += -DTEXT_OUTPUT
@@ -62,8 +76,20 @@ mk_workspace:
 	mkdir -p workspace/func_analysis
 	mkdir -p workspace/original_files
 
+compile_all:
+	$(MAKE) clean
+	$(MAKE) CC=$(CC) OPT_LEVEL=3 FASTMATH=1
+	mv ./test ./test_o3
+	$(MAKE) clean
+	$(MAKE) CC=$(CC) OPT_LEVEL=0 FASTMATH=0
+	mv ./test ./test_o0
+
 run:
-	cat input.txt | ./test `xargs`
+	python3 ../../driver/binary_trace_comp.py -p ./test -a 0x20054416bf5b4afb
+
+clean:
+	rm -rf *.o *.bc test *.out
+	rm -rf workspace 0*/ output.map
 
 main_bc:
 	clang++ -emit-llvm log.c -c -o log.bc $(CUDAFLAGS) $(OPT) $(CFLAGS)
@@ -80,7 +106,3 @@ main: mk_workspace main_bc $(if $(findstring $(LLVM_PASS),1),tracediff)
 	llc -filetype=obj log.bc
 	llc -filetype=obj error.bc
 	$(CC) test.o log.o error.o -o test $(OPT) $(LDFLAGS)
-
-clean:
-	rm -rf *.o test *.out *.bc
-	rm -rf workspace 0*/ output.map
