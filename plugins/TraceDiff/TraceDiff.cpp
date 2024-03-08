@@ -114,7 +114,10 @@ struct TraceDiffPass : public FunctionPass {
 				str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
 				argsV[0] = str;
 			}
-		} else if (StoreInst *storeI = after ? nullptr : dyn_cast<StoreInst>(&I)) {
+		} else if (StoreInst *storeI = dyn_cast<StoreInst>(&I)) {
+			if (after)
+				return nullptr;
+			return nullptr;
 			Value *value_to_store = storeI->getOperand(0);
 			if (value_to_store->getType()->isVectorTy()) {
 				printStr += " (vector)\n";
@@ -143,7 +146,10 @@ struct TraceDiffPass : public FunctionPass {
 				argsV.push_back(value_to_store);
 				argsV.push_back(address_of_store);
 			}
-		} else if (LoadInst *loadI = after ? dyn_cast<LoadInst>(&I) : nullptr) {
+		} else if (LoadInst *loadI = dyn_cast<LoadInst>(&I)) {
+			if (!after)
+				return nullptr;
+			return nullptr;
 			printStr += " %.17g\n";
 			Type *intType = Type::getInt32Ty(module->getContext());
 			std::vector<Type *> printfArgsTypes(
