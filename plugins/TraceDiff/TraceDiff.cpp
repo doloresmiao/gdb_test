@@ -7,6 +7,8 @@
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include <iostream>
+#include <sstream>
 using namespace llvm;
 
 #define DEBUG_PRINT 0
@@ -27,8 +29,20 @@ struct TraceDiffPass : public FunctionPass {
 	CallInst *injectFPProfileCall(Instruction &point, Instruction &I,
 																BasicBlock &BB, IRBuilder<> &builder,
 																Module *module, bool after) {
+		std::stringstream ss;
+		const DebugLoc &location = I.getDebugLoc();
+		if (location) {
+			unsigned int line = location.getLine();
+			unsigned int col = location.getCol();
+			auto *scope = cast<DIScope>(location.getScope());
+			std::string fileName = scope->getFilename().data();
+			ss << "file:" << fileName << " line:" << line << " col:" << col << " | ";
+		} else {
+			ss << "no debug loc available | ";
+		}
+
 		// Declare C standard library printf
-		std::string printStr = "ins ";
+		std::string printStr = ss.str() + "ins ";
 		if (after)
 			printStr += " after ";
 		else
