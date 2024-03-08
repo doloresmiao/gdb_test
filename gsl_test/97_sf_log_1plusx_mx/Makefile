@@ -65,23 +65,22 @@ mk_workspace:
 run:
 	cat input.txt | ./test `xargs`
 
-main: mk_workspace
-	$(CC) -c ../err/error.c -o error.o $(CUDAFLAGS) $(OPT) $(CFLAGS)
-	$(CC) -c ../specfunc/log.c -o log.o $(CUDAFLAGS) $(OPT) $(CFLAGS)
-	$(CC) test.c error.o log.o -o test $(CUDAFLAGS) $(OPT) $(CFLAGS) $(LDFLAGS)
+main_bc:
+	clang++ -emit-llvm log.c -c -o log.bc $(CUDAFLAGS) $(OPT) $(CFLAGS)
+	clang++ -emit-llvm error.c -c -o error.bc $(CUDAFLAGS) $(OPT) $(CFLAGS)
+	clang++ -emit-llvm test.c -c -o test.bc $(CUDAFLAGS) $(OPT) $(CFLAGS)
+
+tracediff:
+	opt $(OPTFLAGS) -load ../../plugins/libTraceDiffPass.so -tracediff < log.bc > /dev/null
+	opt $(OPTFLAGS) -load ../../plugins/libTraceDiffPass.so -tracediff < error.bc > /dev/null
+	opt $(OPTFLAGS) -load ../../plugins/libTraceDiffPass.so -tracediff < test.bc > /dev/null
+
+main: mk_workspace main_bc $(if $(findstring $(LLVM_PASS),1),tracediff)
+	llc -filetype=obj test.bc
+	llc -filetype=obj log.bc
+	llc -filetype=obj error.bc
+	$(CC) test.o log.o error.o -o test $(OPT) $(LDFLAGS)
 
 clean:
-	rm -rf *.o test *.out
+	rm -rf *.o test *.out *.bc
 	rm -rf workspace 0*/ output.map
-
-func_analysis: mk_workspace
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-function-analysis -c ../err/error.c -emit-llvm
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-function-analysis -c ../specfunc/log.c -emit-llvm
-
-raise_precision:
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-expand-precision -c ../err/error.c -emit-llvm
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-expand-precision -c ../specfunc/log.c -emit-llvm
-
-print_results:
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-print-results -c ../err/error.c -emit-llvm
-	clang++ $(CFLAGS) -Xclang -load -Xclang Ciel-plugin.so -Xclang -plugin -Xclang -pliner-gpu-print-results -c ../specfunc/log.c -emit-llvm
