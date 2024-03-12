@@ -138,7 +138,7 @@ struct TraceDiffPass : public FunctionPass {
 			return nullptr;
 		} else if (LoadInst *loadI = dyn_cast<LoadInst>(&I)) {
 			return nullptr;
-		} else if (isa<FPMathOperator>(&I) && I.isUnaryOp()) {
+		} else if (isa<FPMathOperator>(&I) && (I.isUnaryOp() || I.isBinaryOp()) ) {
 			if (after) {
 				printStr += " %.17g\n";
 				Value *result = dyn_cast<Value>(&I);
@@ -153,50 +153,23 @@ struct TraceDiffPass : public FunctionPass {
 				argsV.push_back(str);
 				argsV.push_back(result);
 			} else {
-				printStr += " %.17g\n";
 				Type *intType = Type::getInt32Ty(module->getContext());
-				Value *num1 = I.getOperand(0);
 				std::vector<Type *> printfArgsTypes(
-						{Type::getInt8PtrTy(module->getContext()),
-						 num1->getType()});
+						{Type::getInt8PtrTy(module->getContext())});
+				argsV.push_back(nullptr);
+				for (unsigned int opI = 0; opI < I.getNumOperands(); opI++) {
+					Value *op = I.getOperand(opI);
+					printfArgsTypes.push_back(op->getType());
+					argsV.push_back(op);
+					printStr += " %.17g";
+				}
+				printStr += "\n";
 				FunctionType *printfType =
 						FunctionType::get(intType, printfArgsTypes, true);
 				printfFunc = module->getOrInsertFunction("printf", printfType);
 				str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
-				argsV.push_back(str);
-				argsV.push_back(num1);
-			}
-		} else if (isa<FPMathOperator>(&I) && I.isBinaryOp()) {
-			if (after) {
-				printStr += " %.17g\n";
-				Value *result = dyn_cast<Value>(&I);
-				Type *intType = Type::getInt32Ty(module->getContext());
-				std::vector<Type *> printfArgsTypes(
-						{Type::getInt8PtrTy(module->getContext()),
-						 result->getType()});
-				FunctionType *printfType =
-						FunctionType::get(intType, printfArgsTypes, true);
-				printfFunc = module->getOrInsertFunction("printf", printfType);
-				str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
-				argsV.push_back(str);
-				argsV.push_back(result);
-			} else {
-				printStr += " %.17g %.17g\n";
-				Value *num1 = I.getOperand(0);
-				Value *num2 = I.getOperand(1);
-				Type *intType = Type::getInt32Ty(module->getContext());
-				std::vector<Type *> printfArgsTypes(
-						{Type::getInt8PtrTy(module->getContext()),
-						 num1->getType(),
-						 num2->getType()});
-				FunctionType *printfType =
-						FunctionType::get(intType, printfArgsTypes, true);
-				printfFunc = module->getOrInsertFunction("printf", printfType);
-				str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
-				argsV.push_back(str);
-				argsV.push_back(num1);
-				argsV.push_back(num2);
-			}
+				argsV[0] = str;
+			}			
 		} else {
 			printStr += "\n";
 			Type *intType = Type::getInt32Ty(module->getContext());
