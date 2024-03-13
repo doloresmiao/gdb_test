@@ -2,7 +2,11 @@ cmake_minimum_required(VERSION 3.4)
 project(civ-pass)
 
 # we need LLVM_HOME in order to automatically set LLVM_DIR
-set(ENV{LLVM_DIR} /root/llvm-project/build/lib/cmake/llvm)
+if (APPLE)
+    set(ENV{LLVM_DIR} /opt/homebrew/opt/llvm/lib/cmake/llvm)
+else()
+    set(ENV{LLVM_DIR} /root/llvm-project/build/lib/cmake/llvm)
+endif (APPLE)
 
 find_package(LLVM REQUIRED CONFIG)
 add_definitions(${LLVM_DEFINITIONS})
