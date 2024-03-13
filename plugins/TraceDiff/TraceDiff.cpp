@@ -7,6 +7,7 @@
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include <iostream>
 #include <sstream>
 using namespace llvm;
@@ -267,12 +268,3 @@ char TraceDiffPass::ID = 0;
 
 static RegisterPass<TraceDiffPass> X("tracediff", "TraceDiffPass", false,
 																		 false);
-
-// Automatically enable the pass. http://adriansampson.net/blog/clangpass.html
-static void registerTraceDiffPass(const PassManagerBuilder &,
-																	legacy::PassManagerBase &PM) {
-	PM.add(new TraceDiffPass());
-}
-static RegisterStandardPasses
-		RegisterMyPass(PassManagerBuilder::EP_EarlyAsPossible,
-									 registerTraceDiffPass);
