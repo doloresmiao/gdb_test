@@ -6,7 +6,6 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include <iostream>
 #include <sstream>
@@ -277,5 +276,4 @@ struct TraceDiffPass : public FunctionPass {
 
 char TraceDiffPass::ID = 0;
 
-static RegisterPass<TraceDiffPass> X("tracediff", "TraceDiffPass", false,
-																		 false);
+static RegisterPass<TraceDiffPass> X("tracediff", "TraceDiffPass", false, false);
