@@ -72,7 +72,7 @@ run:
 	python3 ../../driver/binary_trace_comp.py -p ./test -a 0x433d75089307b26e
 
 main: mk_workspace main_bc $(if $(findstring $(LLVM_PASS),1),tracediff)
-	llc -filetype=obj -march=x86-64 test.bc
+	llc -filetype=obj test.bc
 	$(CC) test.o -o test $(OPT) $(LDFLAGS)
 
 clean:
