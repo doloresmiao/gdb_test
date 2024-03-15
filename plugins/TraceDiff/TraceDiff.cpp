@@ -137,12 +137,21 @@ struct TraceDiffPass : public FunctionPass {
 				if (result->getType()->isVectorTy()) {
 					VectorType* vt = dyn_cast<VectorType>(result->getType());
 					ElementCount ct = vt->getElementCount();
-					if (ct.isScalable())
-						printStr += " (vector)\n";
+					Type* et = vt->getElementType();
+					if (ct.isScalable() || !et->isFPOrFPVectorTy())
+						printStr += " (vector)";
 					else {
-						printStr += "(vector";
-						printStr += std::to_string(ct.getFixedValue());
-						printStr += ")\n";
+						printStr += " (";
+
+						for (int vi = 0; vi < ct.getFixedValue(); vi++) {
+							Value* val = builder.CreateExtractElement(result, vi);
+							printfArgsTypes.push_back(et);
+							argsV.push_back(val);
+							printStr += "%.17g";
+							if (vi != ct.getFixedValue() - 1)
+								printStr += " ";
+						}
+						printStr += ")\n";							
 					}
 				}
 				else if (result->getType()->isFPOrFPVectorTy()) {
@@ -173,12 +182,21 @@ struct TraceDiffPass : public FunctionPass {
 					if (op->getType()->isVectorTy()) {
 						VectorType* vt = dyn_cast<VectorType>(op->getType());
 						ElementCount ct = vt->getElementCount();
-						if (ct.isScalable())
+						Type* et = vt->getElementType();
+						if (ct.isScalable() || !et->isFPOrFPVectorTy())
 							printStr += " (vector)";
 						else {
-							printStr += " (vector";
-							printStr += std::to_string(ct.getFixedValue());
-							printStr += ")";
+							printStr += " (";
+
+							for (int vi = 0; vi < ct.getFixedValue(); vi++) {
+								Value* val = builder.CreateExtractElement(op, vi);
+							    printfArgsTypes.push_back(et);
+								argsV.push_back(val);
+								printStr += "%.17g";
+								if (vi != ct.getFixedValue() - 1)
+									printStr += " ";
+							}
+							printStr += ")";							
 						}
 					}
 					else if (op->getType()->isFPOrFPVectorTy()) {
