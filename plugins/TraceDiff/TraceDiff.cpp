@@ -127,7 +127,7 @@ struct TraceDiffPass : public FunctionPass {
 			return nullptr;
 		} else if (LoadInst *loadI = dyn_cast<LoadInst>(&I)) {
 			return nullptr;
-		} else if (isa<FCmpInst>(&I) || isa<UnaryInstruction>(&I) || I.isUnaryOp() || I.isBinaryOp()) {
+		} else if (isa<FCmpInst>(&I) || isa<ShuffleVectorInst>(&I) || isa<InsertElementInst>(&I) || isa<UnaryInstruction>(&I) || I.isUnaryOp() || I.isBinaryOp()) {
 			if (after) {
 				Type *intType = Type::getInt32Ty(module->getContext());
 				std::vector<Type *> printfArgsTypes(
