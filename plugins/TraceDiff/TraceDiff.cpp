@@ -127,7 +127,7 @@ struct TraceDiffPass : public FunctionPass {
 			return nullptr;
 		} else if (LoadInst *loadI = dyn_cast<LoadInst>(&I)) {
 			return nullptr;
-		} else if (isa<FPMathOperator>(&I) && (I.isUnaryOp() || I.isBinaryOp()) ) {
+		} else if (isa<FCmpInst>(&I) || isa<UnaryInstruction>(&I) || I.isUnaryOp() || I.isBinaryOp()) {
 			if (after) {
 				Type *intType = Type::getInt32Ty(module->getContext());
 				std::vector<Type *> printfArgsTypes(
@@ -137,10 +137,18 @@ struct TraceDiffPass : public FunctionPass {
 				if (result->getType()->isVectorTy()) {
 					printStr += " (vector)\n";
 				}
-				else {
+				else if (result->getType()->isFPOrFPVectorTy()) {
 					printfArgsTypes.push_back(result->getType());
 					argsV.push_back(result);
-					printStr += " %.17g\n";
+					printStr += " %.17g\n";					
+				}
+				else if (isa<FCmpInst>(&I) && result->getType()->isIntegerTy()) {
+					printfArgsTypes.push_back(result->getType());
+					argsV.push_back(result);
+					printStr += " %d\n";							
+				}
+				else {
+					printStr += " (nf)\n";
 				}
 				FunctionType *printfType =
 						FunctionType::get(intType, printfArgsTypes, true);
@@ -157,10 +165,13 @@ struct TraceDiffPass : public FunctionPass {
 					if (op->getType()->isVectorTy()) {
 						printStr += " (vector)";
 					}
-					else {
+					else if (op->getType()->isFPOrFPVectorTy()) {
 						printfArgsTypes.push_back(op->getType());
 						argsV.push_back(op);
 						printStr += " %.17g";
+					}
+					else {
+						printStr += " (nf)\n";
 					}
 				}
 				printStr += "\n";
