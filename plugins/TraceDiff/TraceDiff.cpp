@@ -135,7 +135,15 @@ struct TraceDiffPass : public FunctionPass {
 				argsV.push_back(nullptr);
 				Value *result = dyn_cast<Value>(&I);
 				if (result->getType()->isVectorTy()) {
-					printStr += " (vector)\n";
+					VectorType* vt = dyn_cast<VectorType>(result->getType());
+					ElementCount ct = vt->getElementCount();
+					if (ct.isScalable())
+						printStr += " (vector)\n";
+					else {
+						printStr += "(vector";
+						printStr += std::to_string(ct.getFixedValue());
+						printStr += ")\n";
+					}
 				}
 				else if (result->getType()->isFPOrFPVectorTy()) {
 					printfArgsTypes.push_back(result->getType());
@@ -163,7 +171,15 @@ struct TraceDiffPass : public FunctionPass {
 				for (unsigned int opI = 0; opI < I.getNumOperands(); opI++) {
 					Value *op = I.getOperand(opI);
 					if (op->getType()->isVectorTy()) {
-						printStr += " (vector)";
+						VectorType* vt = dyn_cast<VectorType>(op->getType());
+						ElementCount ct = vt->getElementCount();
+						if (ct.isScalable())
+							printStr += " (vector)";
+						else {
+							printStr += " (vector";
+							printStr += std::to_string(ct.getFixedValue());
+							printStr += ")";
+						}
 					}
 					else if (op->getType()->isFPOrFPVectorTy()) {
 						printfArgsTypes.push_back(op->getType());
@@ -171,7 +187,7 @@ struct TraceDiffPass : public FunctionPass {
 						printStr += " %.17g";
 					}
 					else {
-						printStr += " (nf)\n";
+						printStr += " (nf)";
 					}
 				}
 				printStr += "\n";
