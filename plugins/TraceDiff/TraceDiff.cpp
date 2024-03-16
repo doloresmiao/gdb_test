@@ -127,7 +127,7 @@ struct TraceDiffPass : public FunctionPass {
 			return nullptr;
 		} else if (LoadInst *loadI = dyn_cast<LoadInst>(&I)) {
 			return nullptr;
-		} else if (isa<FCmpInst>(&I) || isa<ShuffleVectorInst>(&I) || isa<InsertElementInst>(&I) || isa<UnaryInstruction>(&I) || I.isUnaryOp() || I.isBinaryOp()) {
+		} else {
 			if (after) {
 				Type *intType = Type::getInt32Ty(module->getContext());
 				std::vector<Type *> printfArgsTypes(
@@ -159,7 +159,7 @@ struct TraceDiffPass : public FunctionPass {
 					argsV.push_back(result);
 					printStr += " %.17g\n";					
 				}
-				else if (isa<FCmpInst>(&I) && result->getType()->isIntegerTy()) {
+				else if (result->getType()->isIntegerTy()) {
 					printfArgsTypes.push_back(result->getType());
 					argsV.push_back(result);
 					printStr += " %d\n";							
@@ -204,6 +204,11 @@ struct TraceDiffPass : public FunctionPass {
 						argsV.push_back(op);
 						printStr += " %.17g";
 					}
+					else if (op->getType()->isIntegerTy()) {
+						printfArgsTypes.push_back(op->getType());
+						argsV.push_back(op);
+						printStr += " %d";							
+					}					
 					else {
 						printStr += " (nf)";
 					}
@@ -215,26 +220,6 @@ struct TraceDiffPass : public FunctionPass {
 				str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
 				argsV[0] = str;
 			}	
-		} else if (isOpVector || isResultVector) {
-			printStr += " (vector)\n";
-			Type *intType = Type::getInt32Ty(module->getContext());
-			std::vector<Type *> printfArgsTypes(
-					{Type::getInt8PtrTy(module->getContext())});
-			FunctionType *printfType =
-					FunctionType::get(intType, printfArgsTypes, true);
-			printfFunc = module->getOrInsertFunction("printf", printfType);
-			str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
-			argsV.push_back(str);					
-		} else {
-			printStr += "\n";
-			Type *intType = Type::getInt32Ty(module->getContext());
-			std::vector<Type *> printfArgsTypes(
-					{Type::getInt8PtrTy(module->getContext())});
-			FunctionType *printfType =
-					FunctionType::get(intType, printfArgsTypes, true);
-			printfFunc = module->getOrInsertFunction("printf", printfType);
-			str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
-			argsV.push_back(str);
 		}
 		CallInst *call = builder.CreateCall(printfFunc, argsV, "calltmp");
 		errs() << "injected " << printStr;
