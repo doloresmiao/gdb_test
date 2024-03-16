@@ -67,62 +67,13 @@ struct TraceDiffPass : public FunctionPass {
 			isResultVector = true;
 		}
 
-		if (isa<ReturnInst>(&I)) {
-			return nullptr;
-		}
-		else if (CallInst *callI = dyn_cast<CallInst>(&I)) {
+		if (CallInst *callI = dyn_cast<CallInst>(&I)) {
+			printStr += " ";
 			printStr += getFunctionName(callI);
-			if (after) {
-				Value *result = dyn_cast<Value>(&I);
-				if (result->getType()->isFPOrFPVectorTy()) {
-					printStr += " %.17g\n";
-					Type *intType = Type::getInt32Ty(module->getContext());
-					std::vector<Type *> printfArgsTypes(
-							{Type::getInt8PtrTy(module->getContext()),
-							result->getType()});
-					FunctionType *printfType =
-							FunctionType::get(intType, printfArgsTypes, true);
-					printfFunc = module->getOrInsertFunction("printf", printfType);
-					str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
-					
-					argsV.push_back(str);
-					argsV.push_back(result);
-				} else {
-					printStr += "\n";
-					Type *intType = Type::getInt32Ty(module->getContext());
-					std::vector<Type *> printfArgsTypes(
-							{Type::getInt8PtrTy(module->getContext())});
-					FunctionType *printfType =
-							FunctionType::get(intType, printfArgsTypes, true);
-					printfFunc = module->getOrInsertFunction("printf", printfType);
-					str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
-					argsV.push_back(str);
-				}
-			}
-			else {
-				std::vector<Type *> printfArgsTypes(
-						{Type::getInt8PtrTy(module->getContext())});
-				Type *intType = Type::getInt32Ty(module->getContext());
-				FunctionType *printfType =
-						FunctionType::get(intType, printfArgsTypes, true);
-				printfFunc = module->getOrInsertFunction("printf", printfType);
-				str = nullptr;
-				argsV.push_back(str);
-				for (unsigned int opI = 0; opI < callI->getNumOperands(); opI++) {
-					Value *op = I.getOperand(opI);
-					if (op->getType()->isFPOrFPVectorTy()) {
-						printStr += " %.17g";
-						printfArgsTypes.push_back(op->getType());
-						argsV.push_back(callI->getOperand(opI));
-					}
-					else {
-						printStr += " (nf)";
-					}
-				}				
-				printStr += "\n";
-				str = builder.CreateGlobalStringPtr(printStr.c_str(), printStr.c_str());
-				argsV[0] = str;
-			}
+		}
+
+		if (after && isa<ReturnInst>(&I)) {
+			return nullptr;
 		} else if (StoreInst *storeI = dyn_cast<StoreInst>(&I)) {
 			return nullptr;
 		} else if (LoadInst *loadI = dyn_cast<LoadInst>(&I)) {
